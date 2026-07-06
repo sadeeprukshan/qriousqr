@@ -66,7 +66,7 @@ We will introduce a React Context Provider to wrap the entire app:
 *   **Live Mode**: Hooks into `supabase.auth.onAuthStateChange`.
 *   **Mock Mode**: Simulates auth.
     *   Tracks users and current session in `localStorage`.
-    *   Default account: `owner@kantami.com` / `password123` mapped to company `kantami`.
+    *   Default account: `demo@qriousqr.local` / `demo1234` mapped to company `kantami`.
     *   Registrations create a new company slug record and user credentials in local state.
 
 ---

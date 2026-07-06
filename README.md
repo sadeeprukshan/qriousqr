@@ -75,7 +75,7 @@ Open the local URL displayed in your terminal (usually `http://localhost:5173`) 
 By default, if there are no variables in `.env`, the app runs in **Local Demo Mode**. 
 - It uses a pre-populated dataset (Lebanese Restaurant "Kantami").
 - Any modifications (creating categories, updating theme colors, adding products, custom covers) are persisted to your browser's **localStorage**.
-- **Credentials to test login**: Email `owner@kantami.com` with password `password123`.
+- **Credentials to test login**: Email `demo@qriousqr.local` with password `demo1234`.
 
 ### B. Live Supabase Connection
 To switch the app to a live database:

@@ -14,9 +14,13 @@ function generateUUID() {
   return crypto.randomUUID ? crypto.randomUUID() : 'uu-' + Math.random().toString(36).substring(2, 15) + '-' + Date.now().toString(36);
 }
 
+// Local mock-mode demo credentials. Not used against Supabase.
+// If you're running mock mode locally, use these to sign in:
+//   email:    demo@qriousqr.local
+//   password: demo1234
 const DEFAULT_MOCK_USER = {
-  email: 'owner@kantami.com',
-  password: 'password123',
+  email: 'demo@qriousqr.local',
+  password: 'demo1234',
   company_slug: 'kantami',
   user_id: 'mock-owner'
 };
@@ -206,7 +210,7 @@ export function AuthProvider({ children }) {
           if (!found) {
             found = {
               email: email.toLowerCase(),
-              password: 'password123',
+              password: 'demo1234',
               company_slug: '',
               user_id: generateUUID()
             };

@@ -85,7 +85,7 @@ Also create three **public** Supabase Storage buckets if they don't already exis
 | `/dashboard` | `Dashboard` | Protected. Redirect to `/auth` if no session |
 | `/menu/:slug` | `PublicMenu` | Unchanged behavior, but consume currency from company |
 
-Add an `AuthProvider` (Context) that wraps the Router and exposes `{ session, user, signIn, signUp, signOut, loading }`. In mock mode it should fake-auth against localStorage (default account: email `owner@kantami.com` / password `password123` already mapped to the Kantami tenant).
+Add an `AuthProvider` (Context) that wraps the Router and exposes `{ session, user, signIn, signUp, signOut, loading }`. In mock mode it should fake-auth against localStorage (default account: email `demo@qriousqr.local` / password `demo1234` already mapped to the Kantami tenant).
 
 ### 2.3 `src/pages/LandingPage.jsx`
 
@@ -165,7 +165,7 @@ Add `currency_code: 'USD'` and `country_code: 'LB'` to the Kantami SEED object s
 After you finish, the dev server at `http://localhost:5173` must support this end-to-end walkthrough without errors:
 
 1. **`/`** — Landing page renders. Phone mockup on the right shows the live Kantami menu. Sign-in and Get-started buttons work.
-2. **`/auth`** — Switch tabs. Sign in with `owner@kantami.com` / `password123` in mock mode, OR register a brand new tenant (e.g. "Brewlab" / slug `brewlab` / country `AE` / currency `AED`) in live mode.
+2. **`/auth`** — Switch tabs. Sign in with `demo@qriousqr.local` / `demo1234` in mock mode, OR register a brand new tenant (e.g. "Brewlab" / slug `brewlab` / country `AE` / currency `AED`) in live mode.
 3. **`/dashboard`** — Lands on Profile. Edit theme color to a new hex, save. Switch to Menu, add a new category and a new product with an uploaded image. Switch to Analytics, see at least the visitor count from previous /menu page loads.
 4. **Click "Preview menu"** → opens `/menu/{your-slug}` in a new tab. Verify: theme color changed, new category and product appear, price renders in the tenant's currency (AED with Arabic numerals when language is AR; USD/LBP for Kantami).
 5. **`/menu/kantami`** — Still works exactly as before, but price now shows in **USD** (because we backfilled Kantami's `currency_code`). Toggling EN/AR formats the number correctly via `Intl.NumberFormat`.
