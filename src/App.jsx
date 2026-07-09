@@ -20,9 +20,14 @@ import AdminCompanies from './pages/admin/AdminCompanies.jsx';
 import AdminCompanyDetail from './pages/admin/AdminCompanyDetail.jsx';
 import AdminUsers from './pages/admin/AdminUsers.jsx';
 import AdminReports from './pages/admin/AdminReports.jsx';
+import CustomerRegisterPage from './pages/CustomerRegisterPage.jsx';
+import AdminCustomers from './pages/admin/AdminCustomers.jsx';
+import CustomerLoginPage from './pages/CustomerLoginPage.jsx';
+import CustomerDashboard from './pages/CustomerDashboard.jsx';
+import CustomerRestaurantSpace from './pages/CustomerRestaurantSpace.jsx';
 
 function ProtectedRoute({ children }) {
-  const { user, isSuperAdmin, loading, currentCompany } = useAuth();
+  const { user, isSuperAdmin, isCustomer, loading, currentCompany } = useAuth();
   
   if (loading) {
     return (
@@ -33,6 +38,9 @@ function ProtectedRoute({ children }) {
   }
   if (!user) {
     return <Navigate to="/auth" replace />;
+  }
+  if (isCustomer) {
+    return <Navigate to="/customer" replace />;
   }
   // Reverse Guard: Super admin goes to /admin
   if (isSuperAdmin) {
@@ -51,7 +59,7 @@ function ProtectedRoute({ children }) {
 }
 
 function SuperAdminGate({ children }) {
-  const { user, isSuperAdmin, loading } = useAuth();
+  const { user, isSuperAdmin, isCustomer, loading } = useAuth();
   
   if (loading) {
     return (
@@ -62,6 +70,9 @@ function SuperAdminGate({ children }) {
   }
   if (!user) {
     return <Navigate to="/admin/login" replace />;
+  }
+  if (isCustomer) {
+    return <Navigate to="/customer" replace />;
   }
   if (!isSuperAdmin) {
     return (
@@ -109,6 +120,22 @@ function SuperAdminGate({ children }) {
         </div>
       </div>
     );
+  }
+  return children || <Outlet />;
+}
+
+function CustomerGate({ children }) {
+  const { user, isCustomer, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', fontFamily: 'var(--font-en)' }}>
+        <h3>Loading session...</h3>
+      </div>
+    );
+  }
+  if (!user || !isCustomer) {
+    return <Navigate to="/customer/login" replace />;
   }
   return children || <Outlet />;
 }
@@ -172,8 +199,14 @@ export default function App() {
           <Route index element={<AdminCompanies />} />
           <Route path="companies/:companyId" element={<AdminCompanyDetail />} />
           <Route path="users" element={<AdminUsers />} />
+          <Route path="customers" element={<AdminCustomers />} />
           <Route path="reports" element={<AdminReports />} />
         </Route>
+
+        <Route path="/customer/login" element={<CustomerLoginPage />} />
+        <Route path="/customer/register" element={<CustomerRegisterPage />} />
+        <Route path="/customer" element={<CustomerGate><CustomerDashboard /></CustomerGate>} />
+        <Route path="/customer/menu/:slug" element={<CustomerGate><CustomerRestaurantSpace /></CustomerGate>} />
 
         <Route path="/menu/:slug" element={<PublicMenuRedirect />} />
         <Route path="/menu/:slug/:branchSlug" element={<PublicMenu />} />

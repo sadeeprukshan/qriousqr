@@ -36,6 +36,7 @@ const SEED = {
     description_ar: 'مأكولات لبنانية أصيلة، تقدم بدفء.',
     logo_url: '/seed-images/kantami/logo.webp',
     cover_url: '/seed-images/kantami/cover.webp',
+    merchant_pin: '512840',
     theme_color: '#C0392B',
     secondary_color: '#0E7C7B',
     text_color: '#14110F',
@@ -118,7 +119,8 @@ const SEED = {
       description_ar: 'دجاج متبل في خبز صاج مع صلصة ثوم ومخللات.',
       price: 32, calories: 540, is_available: true,
       image_url: '/seed-images/kantami/products/chicken-shawarma.webp',
-      tags: ['spicy'], allergens: ['gluten', 'dairy'], sort_order: 0
+      tags: ['spicy'], allergens: ['gluten', 'dairy'], sort_order: 0,
+      coupon_category: 'main_course'
     },
     {
       id: 'p-5', company_id: 'kantami', branch_id: 'branch-main', category_id: 'cat-2',
@@ -127,7 +129,8 @@ const SEED = {
       description_ar: 'شاورما لحم مشوية ببطء مع طحينة وبصل بالسماق.',
       price: 38, calories: 620, is_available: true,
       image_url: '/seed-images/kantami/products/beef-shawarma.webp',
-      tags: ['spicy'], allergens: ['gluten', 'dairy'], sort_order: 1
+      tags: ['spicy'], allergens: ['gluten', 'dairy'], sort_order: 1,
+      coupon_category: 'main_course'
     },
     {
       id: 'p-6', company_id: 'kantami', branch_id: 'branch-main', category_id: 'cat-3',
@@ -136,7 +139,8 @@ const SEED = {
       description_ar: 'كفتة لحم وشيش طاووق وكباب لحم مع خضار مشوية.',
       price: 75, calories: 880, is_available: true,
       image_url: '/seed-images/kantami/products/mixed-grill.webp',
-      tags: ['chef-pick'], allergens: ['gluten'], sort_order: 0
+      tags: ['chef-pick'], allergens: ['gluten'], sort_order: 0,
+      coupon_category: 'main_course'
     },
     {
       id: 'p-7', company_id: 'kantami', branch_id: 'branch-main', category_id: 'cat-3',
@@ -145,7 +149,8 @@ const SEED = {
       description_ar: 'أسياخ دجاج متبل مشوية مع ثومية.',
       price: 45, calories: 520, is_available: true,
       image_url: '/seed-images/kantami/products/shish-taouk.webp',
-      tags: ['chef-pick'], allergens: ['gluten'], sort_order: 1
+      tags: ['chef-pick'], allergens: ['gluten'], sort_order: 1,
+      coupon_category: 'main_course'
     },
     {
       id: 'p-8', company_id: 'kantami', branch_id: 'branch-main', category_id: 'cat-4',
@@ -163,7 +168,8 @@ const SEED = {
       description_ar: 'عجينة فيلو متعددة الطبقات بالفستق وشراب ماء الورد.',
       price: 28, calories: 410, is_available: true,
       image_url: '/seed-images/kantami/products/baklava.webp',
-      tags: ['sweet'], allergens: ['gluten', 'nuts', 'dairy'], sort_order: 0
+      tags: ['sweet'], allergens: ['gluten', 'nuts', 'dairy'], sort_order: 0,
+      coupon_category: 'dessert'
     },
     {
       id: 'p-10', company_id: 'kantami', branch_id: 'branch-main', category_id: 'cat-5',
@@ -172,7 +178,8 @@ const SEED = {
       description_ar: 'حلوى جبن دافئة منقوعة بالقطر مزينة بالفستق.',
       price: 32, calories: 480, is_available: true,
       image_url: '/seed-images/kantami/products/knafeh.webp',
-      tags: ['sweet'], allergens: ['gluten', 'nuts', 'dairy'], sort_order: 1
+      tags: ['sweet'], allergens: ['gluten', 'nuts', 'dairy'], sort_order: 1,
+      coupon_category: 'dessert'
     },
     {
       id: 'p-11', company_id: 'kantami', branch_id: 'branch-main', category_id: 'cat-6',
@@ -181,7 +188,8 @@ const SEED = {
       description_ar: 'ليموناضة منزلية بالنعناع.',
       price: 14, calories: 120, is_available: true,
       image_url: '/seed-images/kantami/products/fresh-lemonade.webp',
-      tags: ['refreshing'], allergens: [], sort_order: 0
+      tags: ['refreshing'], allergens: [], sort_order: 0,
+      coupon_category: 'beverage'
     },
     {
       id: 'p-12', company_id: 'kantami', branch_id: 'branch-main', category_id: 'cat-6',
@@ -190,7 +198,8 @@ const SEED = {
       description_ar: 'قهوة عربية تقليدية بالهيل.',
       price: 12, calories: 10, is_available: true,
       image_url: '/seed-images/kantami/products/arabic-coffee.webp',
-      tags: [], allergens: [], sort_order: 1
+      tags: [], allergens: [], sort_order: 1,
+      coupon_category: 'beverage'
     }
   ],
   members: [
@@ -441,7 +450,9 @@ export async function loadMenu(slug, branchSlug) {
     }
 
     const branches = (data.company.branches || []).filter(b => b.is_active);
-    const branch = branches.find(b => b.slug === branchSlug);
+    const branch =
+      branches.find(b => b.slug === branchSlug) ||
+      (!branchSlug ? (branches.find(b => b.is_default) || branches[0]) : null);
     if (!branch) return { company: data.company, branch: null, categories: [], products: [], branches };
 
     const categories = (data.categories || []).filter(c => c.branch_id === branch.id);
@@ -474,7 +485,9 @@ export async function loadMenu(slug, branchSlug) {
   ]);
 
   const branches = branchesRes.data || [];
-  const branch = branches.find(b => b.slug === branchSlug);
+  const branch =
+    branches.find(b => b.slug === branchSlug) ||
+    (!branchSlug ? (branches.find(b => b.is_default) || branches[0]) : null);
 
   if (!branch) {
     return { company, branch: null, categories: [], products: [], branches };

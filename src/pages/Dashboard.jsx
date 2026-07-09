@@ -31,6 +31,7 @@ import {
   updateMemberRole
 } from '../services/teamService.js';
 import QrTab from './dashboard/QrTab.jsx';
+import OperatorConsoleTab from './dashboard/OperatorConsoleTab.jsx';
 import FileInput from '../components/FileInput.jsx';
 import LineChart from '../components/LineChart.jsx';
 import BarChart from '../components/BarChart.jsx';
@@ -180,6 +181,15 @@ export default function Dashboard() {
 
   const [loading, setLoading] = useState(true);
   const [saveLoading, setSaveLoading] = useState(false);
+  const [uploadingCount, setUploadingCount] = useState(0);
+  const isAnyUploading = uploadingCount > 0;
+
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [coverUploading, setCoverUploading] = useState(false);
+  const [branchCoverUploading, setBranchCoverUploading] = useState(false);
+  const [catImageUploading, setCatImageUploading] = useState(false);
+  const [productImageUploading, setProductImageUploading] = useState(false);
+
   const [alert, setAlert] = useState({ type: '', message: '' });
   
   // Tab: Profile Form States
@@ -218,7 +228,7 @@ export default function Dashboard() {
   const [productForm, setProductForm] = useState({
     name_en: '', name_ar: '', description_en: '', description_ar: '',
     price: '', calories: '', is_available: true, image_url: '',
-    category_id: '', tags: [], allergens: []
+    category_id: '', tags: [], allergens: [], coupon_category: ''
   });
   const [productImageFile, setProductImageFile] = useState(null);
   const [productImagePreview, setProductImagePreview] = useState('');
@@ -233,6 +243,74 @@ export default function Dashboard() {
 
   const [analyticsRange, setAnalyticsRange] = useState(7);
   const [analyticsBranchId, setAnalyticsBranchId] = useState('all');
+
+  // Load Coupon stats for company
+  const [couponStats, setCouponStats] = useState(null);
+
+  useEffect(() => {
+    if (!company) return;
+    async function loadCouponStats() {
+      try {
+        if (isMockMode) {
+          const allCoupons = JSON.parse(localStorage.getItem('qriousqr:mock_coupons') || '[]');
+          const companyCoupons = allCoupons.filter(c => c.company_slug === company.slug);
+          
+          const issued = companyCoupons.length;
+          const used = companyCoupons.filter(c => c.status === 'used').length;
+          const expired = companyCoupons.filter(c => c.status === 'expired').length;
+          const active = companyCoupons.filter(c => c.status === 'available').length;
+
+          const mainTotal = companyCoupons.filter(c => c.category === 'main_course').length;
+          const mainUsed = companyCoupons.filter(c => c.category === 'main_course' && c.status === 'used').length;
+
+          const dessertTotal = companyCoupons.filter(c => c.category === 'dessert').length;
+          const dessertUsed = companyCoupons.filter(c => c.category === 'dessert' && c.status === 'used').length;
+
+          const beverageTotal = companyCoupons.filter(c => c.category === 'beverage').length;
+          const beverageUsed = companyCoupons.filter(c => c.category === 'beverage' && c.status === 'used').length;
+
+          setCouponStats({
+            issued,
+            used,
+            expired,
+            active,
+            category_breakdown: {
+              main_course: { used: mainUsed, total: mainTotal },
+              dessert: { used: dessertUsed, total: dessertTotal },
+              beverage: { used: beverageUsed, total: beverageTotal }
+            }
+          });
+        } else {
+          const { data, error } = await supabase.rpc('coupon_stats_for_company', {
+            p_company_id: company.id,
+            p_days: 30
+          });
+          if (!error && data && data.length > 0) {
+            setCouponStats(data[0]);
+          } else {
+            setCouponStats(null);
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    if (activeTab === 'analytics') {
+      loadCouponStats();
+    }
+  }, [company, activeTab]);
+
+  const [revealMerchantPin, setRevealMerchantPin] = useState(false);
+  const [copiedMerchantPin, setCopiedMerchantPin] = useState(false);
+
+  useEffect(() => {
+    if (!revealMerchantPin) return;
+    const timer = setTimeout(() => {
+      setRevealMerchantPin(false);
+    }, 30000);
+    return () => clearTimeout(timer);
+  }, [revealMerchantPin]);
 
   const isStaff = activeRole === 'staff';
   const isSuspended = company && company.status === 'suspended';
@@ -435,11 +513,23 @@ export default function Dashboard() {
   const handleImageChange = async (file, type) => {
     if (isStaff) return;
     if (!file) return;
-    
-    const localUrl = URL.createObjectURL(file);
-    if (type === 'logo') setLogoPreview(localUrl);
-    if (type === 'cover') setCoverPreview(localUrl);
 
+    if (isAnyUploading) {
+      showAlert('warning', 'Another upload is still in progress. Please wait.');
+      return;
+    }
+
+    const localUrl = URL.createObjectURL(file);
+    if (type === 'logo') {
+      setLogoPreview(localUrl);
+      setLogoUploading(true);
+    }
+    if (type === 'cover') {
+      setCoverPreview(localUrl);
+      setCoverUploading(true);
+    }
+
+    setUploadingCount(n => n + 1);
     try {
       const bucket = type === 'logo' ? 'logos' : 'covers';
       const publicUrl = await uploadImage(bucket, file, user.id);
@@ -450,7 +540,14 @@ export default function Dashboard() {
       showAlert('success', `${type === 'logo' ? 'Logo' : 'Cover'} uploaded successfully.`);
     } catch (err) {
       console.error(err);
-      showAlert('error', 'Failed to upload image.');
+      if (type === 'logo') setLogoPreview(profileForm.logo_url || '');
+      if (type === 'cover') setCoverPreview(profileForm.cover_url || '');
+      showAlert('error', 'Upload failed. The image was not saved.');
+    } finally {
+      if (type === 'logo') setLogoUploading(false);
+      if (type === 'cover') setCoverUploading(false);
+      setUploadingCount(n => Math.max(0, n - 1));
+      URL.revokeObjectURL(localUrl);
     }
   };
 
@@ -465,10 +562,18 @@ export default function Dashboard() {
         throw new Error(`Invalid hex format in ${invalid.replace('_', ' ')}.`);
       }
 
+      // Never persist blob: / data: URLs — those are browser-only preview URLs.
+      // If the upload didn't produce a real Storage URL, keep the previous DB value.
+      const isRealUrl = (u) =>
+        typeof u === 'string' && u.length > 0 &&
+        !u.startsWith('blob:') && !u.startsWith('data:');
+      const safeLogoUrl  = isRealUrl(profileForm.logo_url)  ? profileForm.logo_url  : company.logo_url;
+      const safeCoverUrl = isRealUrl(profileForm.cover_url) ? profileForm.cover_url : company.cover_url;
+
       const updated = await updateCompany(company.slug, {
         ...profileForm,
-        logo_url: profileForm.logo_url !== undefined ? profileForm.logo_url : logoPreview,
-        cover_url: profileForm.cover_url !== undefined ? profileForm.cover_url : coverPreview
+        logo_url: safeLogoUrl,
+        cover_url: safeCoverUrl
       });
       setCompany(updated);
       setProfileForm(prev => ({
@@ -536,6 +641,38 @@ export default function Dashboard() {
     });
   };
 
+  const handleBranchCoverChange = async (file) => {
+    if (isStaff) return;
+    if (!file) return;
+
+    if (isAnyUploading) {
+      showAlert('warning', 'Another upload is still in progress. Please wait.');
+      return;
+    }
+
+    const localUrl = URL.createObjectURL(file);
+    setBranchCoverPreview(localUrl);
+    setBranchCoverUploading(true);
+
+    setUploadingCount(n => n + 1);
+    try {
+      const publicUrl = await uploadImage('branch-covers', file, user.id);
+      setBranchForm(prev => ({
+        ...prev,
+        cover_url: publicUrl
+      }));
+      showAlert('success', 'Branch cover image uploaded successfully.');
+    } catch (err) {
+      console.error(err);
+      setBranchCoverPreview(branchForm.cover_url || '');
+      showAlert('error', 'Upload failed. The image was not saved.');
+    } finally {
+      setBranchCoverUploading(false);
+      setUploadingCount(n => Math.max(0, n - 1));
+      URL.revokeObjectURL(localUrl);
+    }
+  };
+
   const handleBranchSubmit = async (e) => {
     e.preventDefault();
     if (isStaff) return;
@@ -543,14 +680,8 @@ export default function Dashboard() {
 
     setSaveLoading(true);
     try {
-      let finalCoverUrl = branchForm.cover_url;
-      if (branchCoverFile) {
-        finalCoverUrl = await uploadImage('branch-covers', branchCoverFile, user.id);
-      }
-
       const bData = {
-        ...branchForm,
-        cover_url: finalCoverUrl
+        ...branchForm
       };
 
       if (editingBranch) {
@@ -642,10 +773,36 @@ export default function Dashboard() {
   };
 
   // CATEGORIES PANEL LOGIC
-  const handleCatImageChange = (file) => {
+  const handleCatImageChange = async (file) => {
+    if (isStaff) return;
     if (!file) return;
-    setCatImageFile(file);
-    setCatImagePreview(URL.createObjectURL(file));
+
+    if (isAnyUploading) {
+      showAlert('warning', 'Another upload is still in progress. Please wait.');
+      return;
+    }
+
+    const localUrl = URL.createObjectURL(file);
+    setCatImagePreview(localUrl);
+    setCatImageUploading(true);
+
+    setUploadingCount(n => n + 1);
+    try {
+      const publicUrl = await uploadImage('category-images', file, user.id);
+      setCatForm(prev => ({
+        ...prev,
+        image_url: publicUrl
+      }));
+      showAlert('success', 'Category image uploaded successfully.');
+    } catch (err) {
+      console.error(err);
+      setCatImagePreview(catForm.image_url || '');
+      showAlert('error', 'Upload failed. The image was not saved.');
+    } finally {
+      setCatImageUploading(false);
+      setUploadingCount(n => Math.max(0, n - 1));
+      URL.revokeObjectURL(localUrl);
+    }
   };
 
   const handleAddCatSubmit = async (e) => {
@@ -653,13 +810,8 @@ export default function Dashboard() {
     if (isStaff) return;
     if (!catForm.name_en || !catForm.name_ar || !selectedBranchId) return;
     try {
-      let finalImageUrl = null;
-      if (catImageFile) {
-        finalImageUrl = await uploadImage('category-images', catImageFile, user.id);
-      }
-
       const sortOrder = categories.length > 0 ? Math.max(...categories.map(c => c.sort_order)) + 1 : 1;
-      const newCat = await addCategory(company.id, company.slug, catForm.name_en, catForm.name_ar, sortOrder, finalImageUrl, selectedBranchId);
+      const newCat = await addCategory(company.id, company.slug, catForm.name_en, catForm.name_ar, sortOrder, catForm.image_url || null, selectedBranchId);
       setCategories([...categories, newCat]);
       setSelectedCatId(newCat.id);
       setCatForm({ name_en: '', name_ar: '', image_url: '' });
@@ -677,12 +829,7 @@ export default function Dashboard() {
     if (isStaff) return;
     if (!catForm.name_en || !catForm.name_ar) return;
     try {
-      let finalImageUrl = catForm.image_url;
-      if (catImageFile) {
-        finalImageUrl = await uploadImage('category-images', catImageFile, user.id);
-      }
-
-      const updated = await updateCategory(company.id, company.slug, id, catForm.name_en, catForm.name_ar, finalImageUrl);
+      const updated = await updateCategory(company.id, company.slug, id, catForm.name_en, catForm.name_ar, catForm.image_url || null);
       setCategories(categories.map(c => c.id === id ? updated : c));
       setEditingCatId(null);
       setCatForm({ name_en: '', name_ar: '', image_url: '' });
@@ -800,7 +947,8 @@ export default function Dashboard() {
         image_url: prod.image_url || '',
         category_id: prod.category_id,
         tags: prod.tags || [],
-        allergens: prod.allergens || []
+        allergens: prod.allergens || [],
+        coupon_category: prod.coupon_category || ''
       });
       setProductImagePreview(prod.image_url || '');
     } else {
@@ -816,7 +964,8 @@ export default function Dashboard() {
         image_url: '',
         category_id: selectedCatId,
         tags: [],
-        allergens: []
+        allergens: [],
+        coupon_category: ''
       });
       setProductImagePreview('');
     }
@@ -826,10 +975,36 @@ export default function Dashboard() {
     setShowProductModal(true);
   };
 
-  const handleProductImageChange = (file) => {
+  const handleProductImageChange = async (file) => {
+    if (isStaff) return;
     if (!file) return;
-    setProductImageFile(file);
-    setProductImagePreview(URL.createObjectURL(file));
+
+    if (isAnyUploading) {
+      showAlert('warning', 'Another upload is still in progress. Please wait.');
+      return;
+    }
+
+    const localUrl = URL.createObjectURL(file);
+    setProductImagePreview(localUrl);
+    setProductImageUploading(true);
+
+    setUploadingCount(n => n + 1);
+    try {
+      const publicUrl = await uploadImage('products', file, user.id);
+      setProductForm(prev => ({
+        ...prev,
+        image_url: publicUrl
+      }));
+      showAlert('success', 'Product image uploaded successfully.');
+    } catch (err) {
+      console.error(err);
+      setProductImagePreview(productForm.image_url || '');
+      showAlert('error', 'Upload failed. The image was not saved.');
+    } finally {
+      setProductImageUploading(false);
+      setUploadingCount(n => Math.max(0, n - 1));
+      URL.revokeObjectURL(localUrl);
+    }
   };
 
   // Duplicate Product Inline Action
@@ -850,7 +1025,8 @@ export default function Dashboard() {
         is_available: p.is_available,
         image_url: p.image_url,
         tags: p.tags || [],
-        allergens: p.allergens || []
+        allergens: p.allergens || [],
+        coupon_category: p.coupon_category || null
       };
 
       const added = await addProduct(company.id, company.slug, duplicatedData);
@@ -935,11 +1111,6 @@ export default function Dashboard() {
     
     setSaveLoading(true);
     try {
-      let finalImageUrl = productForm.image_url;
-      if (productImageFile) {
-        finalImageUrl = await uploadImage('products', productImageFile, user.id);
-      }
-
       const pData = {
         branch_id: selectedBranchId,
         category_id: productForm.category_id,
@@ -950,9 +1121,10 @@ export default function Dashboard() {
         price: parseFloat(productForm.price),
         calories: productForm.calories ? parseInt(productForm.calories) : null,
         is_available: productForm.is_available,
-        image_url: finalImageUrl,
+        image_url: productForm.image_url || null,
         tags: productForm.tags,
-        allergens: productForm.allergens
+        allergens: productForm.allergens,
+        coupon_category: productForm.coupon_category && productForm.coupon_category !== '' ? productForm.coupon_category : null
       };
 
       if (editingProduct) {
@@ -1155,6 +1327,19 @@ export default function Dashboard() {
               <path d="M4 6h16M4 12h16M4 18h7" />
             </svg>
             <span>Menu management</span>
+          </button>
+
+          <button 
+            className={`nav-item ${activeTab === 'operator' ? 'active' : ''}`}
+            onClick={() => setActiveTab('operator')}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect width="18" height="18" x="3" y="3" rx="2" />
+              <path d="M9 17H5a2 2 0 0 1-2-2V5" />
+              <path d="m21 11-4 4-4-4" />
+              <path d="M17 5v10" />
+            </svg>
+            <span>Operator</span>
           </button>
 
           <button 
@@ -1531,9 +1716,9 @@ export default function Dashboard() {
                     <button 
                       type="submit" 
                       className="btn-save-profile" 
-                      disabled={saveLoading}
+                      disabled={saveLoading || isAnyUploading}
                     >
-                      {saveLoading ? 'Saving...' : 'Save Settings'}
+                      {isAnyUploading ? 'Uploading image...' : (saveLoading ? 'Saving...' : 'Save Settings')}
                     </button>
                   )}
                 </form>
@@ -1556,6 +1741,7 @@ export default function Dashboard() {
                           id="profile-logo-upload"
                           currentUrl={logoPreview}
                           onFile={(file) => handleImageChange(file, 'logo')}
+                          uploading={logoUploading}
                         />
                       )}
                     </div>
@@ -1571,6 +1757,7 @@ export default function Dashboard() {
                           id="profile-cover-upload"
                           currentUrl={coverPreview}
                           onFile={(file) => handleImageChange(file, 'cover')}
+                          uploading={coverUploading}
                         />
                       )}
                     </div>
@@ -1611,6 +1798,134 @@ export default function Dashboard() {
                         $10.00
                       </div>
                     </div>
+                  </div>
+                </div>
+
+                {/* Merchant PIN Card */}
+                <div style={{
+                  marginTop: '24px',
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid #F59E0B',
+                  borderRadius: '12px',
+                  padding: '24px',
+                  boxShadow: '0 4px 12px rgba(245, 158, 11, 0.05)',
+                  boxSizing: 'border-box'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '800', color: 'var(--text)' }}>
+                        Merchant PIN / <span style={{ fontFamily: 'var(--font-ar)' }}>رمز التاجر</span>
+                      </h4>
+                      <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-soft)', lineHeight: '1.4' }}>
+                        Share this with authorized staff only. Diners will enter it to claim a coupon.
+                      </p>
+                    </div>
+                    <span style={{ fontSize: '20px' }}>🔑</span>
+                  </div>
+
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '16px',
+                    margin: '20px 0',
+                    background: '#F9FAFB',
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px',
+                    padding: '16px 8px'
+                  }}>
+                    <span style={{
+                      fontSize: '28px',
+                      fontWeight: '800',
+                      fontFamily: 'monospace',
+                      letterSpacing: revealMerchantPin ? '6px' : '4px',
+                      color: 'var(--primary-color)'
+                    }}>
+                      {revealMerchantPin 
+                        ? (company?.merchant_pin || '512840') 
+                        : '• • • • • •'
+                      }
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={() => setRevealMerchantPin(!revealMerchantPin)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--text-soft)',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        display: 'flex',
+                        alignItems: 'center'
+                      }}
+                      title={revealMerchantPin ? 'Hide PIN' : 'Reveal PIN'}
+                    >
+                      {revealMerchantPin ? (
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                          <line x1="1" y1="1" x2="23" y2="23" />
+                        </svg>
+                      ) : (
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(company?.merchant_pin || '512840');
+                          setCopiedMerchantPin(true);
+                          setTimeout(() => setCopiedMerchantPin(false), 2000);
+                        } catch (err) {
+                          console.error(err);
+                        }
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: '10px 14px',
+                        borderRadius: '6px',
+                        backgroundColor: copiedMerchantPin ? '#DCFCE7' : '#FFFFFF',
+                        color: copiedMerchantPin ? 'var(--primary-color)' : 'var(--text)',
+                        border: '1px solid var(--border)',
+                        fontSize: '13px',
+                        fontWeight: '700',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+                        <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+                      </svg>
+                      <span>{copiedMerchantPin ? 'Copied!' : 'Copy PIN'}</span>
+                    </button>
+                  </div>
+
+                  <div style={{
+                    backgroundColor: '#FFFBEB',
+                    border: '1px solid #FDE68A',
+                    borderRadius: '8px',
+                    padding: '10px 12px',
+                    fontSize: '11px',
+                    color: '#B45309',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    lineHeight: '1.4'
+                  }}>
+                    <span>⚠️</span>
+                    <span>Do not display publicly. Do not share on social media.</span>
                   </div>
                 </div>
               </div>
@@ -1794,12 +2109,15 @@ export default function Dashboard() {
                           id="cat-add-image"
                           currentUrl={catImagePreview}
                           onFile={handleCatImageChange}
+                          uploading={catImageUploading}
                         />
                       </div>
 
                       <div className="inline-btn-row">
-                        <button type="submit" className="btn-inline-submit">Create</button>
-                        <button type="button" className="btn-inline-cancel" onClick={() => setShowAddCat(false)}>Cancel</button>
+                        <button type="submit" className="btn-inline-submit" disabled={isAnyUploading}>
+                          {isAnyUploading ? 'Uploading...' : 'Create'}
+                        </button>
+                        <button type="button" className="btn-inline-cancel" onClick={() => setShowAddCat(false)} disabled={isAnyUploading}>Cancel</button>
                       </div>
                     </form>
                   )}
@@ -1862,16 +2180,19 @@ export default function Dashboard() {
                                 id={`cat-edit-image-${cat.id}`}
                                 currentUrl={catImagePreview || cat.image_url}
                                 onFile={handleCatImageChange}
+                                uploading={catImageUploading}
                               />
                             </div>
 
                             <div className="edit-actions">
-                              <button className="btn-check" onClick={() => handleUpdateCatSubmit(cat.id)}>✔ Save</button>
+                              <button className="btn-check" onClick={() => handleUpdateCatSubmit(cat.id)} disabled={isAnyUploading}>
+                                {isAnyUploading ? 'Uploading...' : '✔ Save'}
+                              </button>
                               <button className="btn-cross" onClick={() => {
                                 setEditingCatId(null);
                                 setCatImageFile(null);
                                 setCatImagePreview('');
-                              }}>✖ Cancel</button>
+                              }} disabled={isAnyUploading}>✖ Cancel</button>
                             </div>
                           </div>
                         ) : (
@@ -1994,7 +2315,26 @@ export default function Dashboard() {
                                 </svg>
                               </div>
                             )}
-                            <h4 style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{p.name_en} / {p.name_ar}</h4>
+                            <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                              <span>{p.name_en} / {p.name_ar}</span>
+                              {p.coupon_category && (
+                                <span 
+                                  style={{
+                                    fontSize: '10px',
+                                    fontWeight: '800',
+                                    padding: '2px 6px',
+                                    borderRadius: '4px',
+                                    backgroundColor: `${company?.secondary_color || '#E06A3B'}18`,
+                                    color: company?.secondary_color || '#E06A3B',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.5px',
+                                    display: 'inline-block'
+                                  }}
+                                >
+                                  {p.coupon_category === 'main_course' ? 'MAIN' : p.coupon_category === 'dessert' ? 'DESSERT' : 'BEVERAGE'}
+                                </span>
+                              )}
+                            </h4>
                             <span className="price-tag">{currencySymbol} {p.price}</span>
                           </div>
                           <p className="product-dash-desc">{p.description_en || 'No description available.'}</p>
@@ -2066,6 +2406,11 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
+          )}
+
+          {/* OPERATOR TAB */}
+          {activeTab === 'operator' && (
+            <OperatorConsoleTab company={company} />
           )}
 
           {/* QR CODE TAB */}
@@ -2163,6 +2508,73 @@ export default function Dashboard() {
                     />
                   )}
                 </div>
+              </div>
+
+              {/* Coupons Analytics Card */}
+              <div className="chart-card-full" style={{ marginTop: '24px' }}>
+                <h4>Coupons — last 30 days</h4>
+                {!couponStats || couponStats.issued === 0 ? (
+                  <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-soft)', fontSize: '15px' }}>
+                    No coupons issued for this restaurant yet.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                    {/* Stat pills */}
+                    <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                      <div className="stat-card" style={{ flex: 1, minWidth: '100px', border: '1px solid var(--border)', background: 'var(--bg)', padding: '12px' }}>
+                        <span className="stat-label" style={{ fontSize: '12px' }}>Issued</span>
+                        <span className="stat-value" style={{ fontSize: '20px', fontWeight: '800' }}>{couponStats.issued}</span>
+                      </div>
+                      <div className="stat-card" style={{ flex: 1, minWidth: '100px', border: '1px solid rgba(14, 124, 123, 0.2)', background: 'rgba(14, 124, 123, 0.04)', padding: '12px' }}>
+                        <span className="stat-label" style={{ fontSize: '12px', color: 'var(--secondary-color)' }}>Used</span>
+                        <span className="stat-value" style={{ fontSize: '20px', fontWeight: '800', color: 'var(--secondary-color)' }}>{couponStats.used}</span>
+                      </div>
+                      <div className="stat-card" style={{ flex: 1, minWidth: '100px', border: '1px solid var(--border)', background: 'var(--bg)', padding: '12px', opacity: 0.6 }}>
+                        <span className="stat-label" style={{ fontSize: '12px' }}>Expired</span>
+                        <span className="stat-value" style={{ fontSize: '20px', fontWeight: '800' }}>{couponStats.expired}</span>
+                      </div>
+                      <div className="stat-card" style={{ flex: 1, minWidth: '100px', border: '1px solid rgba(255, 87, 34, 0.2)', background: 'rgba(255, 87, 34, 0.04)', padding: '12px' }}>
+                        <span className="stat-label" style={{ fontSize: '12px', color: 'var(--primary-color)' }}>Active</span>
+                        <span className="stat-value" style={{ fontSize: '20px', fontWeight: '800', color: 'var(--primary-color)' }}>{couponStats.active}</span>
+                      </div>
+                    </div>
+
+                    {/* Category Breakdown Horizontal Bars */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', borderTop: '1px solid var(--border)', paddingTop: '20px' }}>
+                      <h5 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: '700', color: 'var(--text)' }}>Category Breakdown (Used / Total Issued)</h5>
+                      {Object.entries({
+                        main_course: 'Main Course',
+                        dessert: 'Dessert',
+                        beverage: 'Beverage'
+                      }).map(([catKey, catLabel]) => {
+                        const defaultVal = { used: 0, available: 0, total: 0 };
+                        const catData = couponStats.category_breakdown?.[catKey] || defaultVal;
+                        const used = catData.used || 0;
+                        const available = catData.available || 0;
+                        const total = catData.total || (used + available);
+                        
+                        const pct = total > 0 ? Math.round((used / total) * 100) : 0;
+
+                        return (
+                          <div key={catKey} style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                            <div style={{ width: '120px', fontSize: '13px', fontWeight: '600', color: 'var(--text)', flexShrink: 0 }}>
+                              {catLabel}
+                            </div>
+                            <div style={{ flex: 1, position: 'relative' }}>
+                              <svg width="100%" height="8" style={{ display: 'block', overflow: 'visible' }}>
+                                <rect width="100%" height="8" rx="4" fill="var(--surface-2)" />
+                                <rect width={`${pct}%`} height="8" rx="4" fill="var(--primary-color)" style={{ transition: 'width 0.8s ease-out' }} />
+                              </svg>
+                            </div>
+                            <div style={{ width: '60px', fontSize: '13px', fontWeight: '700', color: 'var(--text-soft)', textAlign: 'right', flexShrink: 0 }}>
+                              {used} / {total}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -2541,10 +2953,8 @@ export default function Dashboard() {
                   <FileInput
                     id="branch-cover-upload"
                     currentUrl={branchCoverPreview}
-                    onFile={(file) => {
-                      setBranchCoverFile(file);
-                      setBranchCoverPreview(URL.createObjectURL(file));
-                    }}
+                    onFile={handleBranchCoverChange}
+                    uploading={branchCoverUploading}
                   />
                 </div>
 
@@ -2615,10 +3025,10 @@ export default function Dashboard() {
               </fieldset>
 
               <footer className="modal-footer-btn-row" style={{ marginTop: '20px' }}>
-                <button type="submit" className="btn-modal-submit" disabled={saveLoading}>
-                  {saveLoading ? 'Saving...' : 'Save Branch'}
+                <button type="submit" className="btn-modal-submit" disabled={saveLoading || isAnyUploading}>
+                  {isAnyUploading ? 'Uploading...' : (saveLoading ? 'Saving...' : 'Save Branch')}
                 </button>
-                <button type="button" className="btn-modal-cancel" onClick={() => setShowBranchModal(false)}>
+                <button type="button" className="btn-modal-cancel" onClick={() => setShowBranchModal(false)} disabled={isAnyUploading}>
                   Cancel
                 </button>
               </footer>
@@ -2717,6 +3127,22 @@ export default function Dashboard() {
                       <option key={cat.id} value={cat.id}>{cat.name_en} / {cat.name_ar}</option>
                     ))}
                   </select>
+                </div>
+
+                <div className="form-group">
+                  <label>Coupon category / <span style={{ fontFamily: 'var(--font-ar)' }}>فئة القسيمة</span></label>
+                  <select 
+                    value={productForm.coupon_category || ''} 
+                    onChange={e => setProductForm({ ...productForm, coupon_category: e.target.value })}
+                  >
+                    <option value="">— None / لا شيء —</option>
+                    <option value="main_course">Main course / طبق رئيسي</option>
+                    <option value="dessert">Dessert / حلوى</option>
+                    <option value="beverage">Beverage / مشروب</option>
+                  </select>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: 'var(--text-soft)' }}>
+                    Optional. If set, this item can be selected when a customer redeems a coupon.
+                  </p>
                 </div>
 
                 <div className="form-row">
@@ -2869,6 +3295,7 @@ export default function Dashboard() {
                       id="product-image-upload"
                       currentUrl={productImagePreview}
                       onFile={handleProductImageChange}
+                      uploading={productImageUploading}
                     />
                   )}
                 </div>
@@ -2887,11 +3314,11 @@ export default function Dashboard() {
 
               <footer className="modal-footer-btn-row">
                 {!isLocked && (
-                  <button type="submit" className="btn-modal-submit" disabled={saveLoading}>
-                    {saveLoading ? 'Saving...' : (editingProduct ? 'Update Product' : 'Add Product')}
+                  <button type="submit" className="btn-modal-submit" disabled={saveLoading || isAnyUploading}>
+                    {isAnyUploading ? 'Uploading...' : (saveLoading ? 'Saving...' : (editingProduct ? 'Update Product' : 'Add Product'))}
                   </button>
                 )}
-                <button type="button" className="btn-modal-cancel" onClick={() => setShowProductModal(false)}>
+                <button type="button" className="btn-modal-cancel" onClick={() => setShowProductModal(false)} disabled={isAnyUploading}>
                   {isLocked ? 'Close' : 'Cancel'}
                 </button>
               </footer>

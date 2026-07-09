@@ -1,7 +1,34 @@
-node_modules
-dist
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.vite/
+
+# Env files (SECRETS)
 .env
 .env.local
+.env.*.local
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Logs
 *.log
-.vite
+npm-debug.log*
+
+# Claude / agent workspace — never commit
+.claude/
+Message_for_Gravity.md
+Message_for_Claude.md
+Message for claude.md
+GEMINI_PROMPT.md
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Local screenshot output
+screenshots/

@@ -103,7 +103,7 @@ export function PublicMenuSkeleton() {
   );
 }
 
-export default function PublicMenu({ slug: propSlug, branchSlug: propBranchSlug, preloadedData }) {
+export default function PublicMenu({ slug: propSlug, branchSlug: propBranchSlug, preloadedData, isCustomerSpace, eligibleCouponCategories = null }) {
   const params = useParams();
   const slug = propSlug || params.slug;
   const branchSlug = propBranchSlug || params.branchSlug;
@@ -438,91 +438,95 @@ export default function PublicMenu({ slug: propSlug, branchSlug: propBranchSlug,
         </div>
       )}
 
-      <div className="cover">
-        {c.cover_url && (
-          <img 
-            src={c.cover_url} 
-            alt="" 
-            loading="eager" 
-            fetchpriority="high"
-          />
-        )}
+      {!isCustomerSpace && (
+        <div className="cover">
+          {c.cover_url && (
+            <img 
+              src={c.cover_url} 
+              alt="" 
+              loading="eager" 
+              fetchpriority="high"
+            />
+          )}
 
-        {/* Cover Branch Switcher (Only if 2+ branches) */}
-        {data.branches && data.branches.length >= 2 && (
-          <div className="cover-branch-switcher">
-            <button className="cover-branch-switcher-btn" onClick={() => setShowBranchSelect(!showBranchSelect)}>
-              📍 {isRtl ? data.branch?.name_ar : data.branch?.name_en} ▾
-            </button>
-            {showBranchSelect && (
-              <div className="cover-branch-dropdown">
-                {data.branches.map(b => (
-                  <button 
-                    key={b.id} 
-                    className={`cover-branch-option ${b.id === data.branch?.id ? 'active' : ''}`}
-                    onClick={() => {
-                      setShowBranchSelect(false);
-                      navigate(`/menu/${slug}/${b.slug}?lang=${lang}`);
-                    }}
-                  >
-                    {isRtl ? b.name_ar : b.name_en}
-                  </button>
-                ))}
-              </div>
-            )}
+          {/* Cover Branch Switcher (Only if 2+ branches) */}
+          {data.branches && data.branches.length >= 2 && (
+            <div className="cover-branch-switcher">
+              <button className="cover-branch-switcher-btn" onClick={() => setShowBranchSelect(!showBranchSelect)}>
+                📍 {isRtl ? data.branch?.name_ar : data.branch?.name_en} ▾
+              </button>
+              {showBranchSelect && (
+                <div className="cover-branch-dropdown">
+                  {data.branches.map(b => (
+                    <button 
+                      key={b.id} 
+                      className={`cover-branch-option ${b.id === data.branch?.id ? 'active' : ''}`}
+                      onClick={() => {
+                        setShowBranchSelect(false);
+                        navigate(`/menu/${slug}/${b.slug}?lang=${lang}`);
+                      }}
+                    >
+                      {isRtl ? b.name_ar : b.name_en}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="lang-switch">
+            <button className={lang === 'en' ? 'active' : ''} onClick={() => setLang('en')}>EN</button>
+            <button className={lang === 'ar' ? 'active' : ''} onClick={() => setLang('ar')}>ع</button>
           </div>
-        )}
 
-        <div className="lang-switch">
-          <button className={lang === 'en' ? 'active' : ''} onClick={() => setLang('en')}>EN</button>
-          <button className={lang === 'ar' ? 'active' : ''} onClick={() => setLang('ar')}>ع</button>
-        </div>
-
-        {/* Circular Share Button */}
-        <button 
-          className="cover-share-btn" 
-          onClick={shareMenu} 
-          aria-label={lang === 'ar' ? 'مشاركة' : 'Share'}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-            <polyline points="16 6 12 2 8 6" />
-            <line x1="12" y1="2" x2="12" y2="15" />
-          </svg>
-        </button>
-
-        {/* PWA Install Button */}
-        {canInstall && (
+          {/* Circular Share Button */}
           <button 
-            className="cover-install-btn" 
-            onClick={installPrompt} 
-            aria-label={lang === 'ar' ? 'تثبيت التطبيق' : 'Install App'}
+            className="cover-share-btn" 
+            onClick={shareMenu} 
+            aria-label={lang === 'ar' ? 'مشاركة' : 'Share'}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
-              <line x1="12" y1="18" x2="12.01" y2="18" />
-              <polyline points="9 10 12 13 15 10" />
-              <line x1="12" y1="6" x2="12" y2="13" />
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+              <polyline points="16 6 12 2 8 6" />
+              <line x1="12" y1="2" x2="12" y2="15" />
             </svg>
           </button>
-        )}
-      </div>
 
-      <header className="header">
-        <div className="logo">
-          {c.logo_url ? <img src={c.logo_url} alt={name} /> : null}
+          {/* PWA Install Button */}
+          {canInstall && (
+            <button 
+              className="cover-install-btn" 
+              onClick={installPrompt} 
+              aria-label={lang === 'ar' ? 'تثبيت التطبيق' : 'Install App'}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                <line x1="12" y1="18" x2="12.01" y2="18" />
+                <polyline points="9 10 12 13 15 10" />
+                <line x1="12" y1="6" x2="12" y2="13" />
+              </svg>
+            </button>
+          )}
         </div>
-        <h1 className="brand-name">{name}</h1>
-        {data.branches && data.branches.length >= 2 && data.branch && (
-          <div className="branch-header-pill" style={{ color: 'var(--primary-color)', background: 'var(--primary-soft)' }}>
-            📍 {isRtl ? data.branch.name_ar : data.branch.name_en}
+      )}
+
+      {!isCustomerSpace && (
+        <header className="header">
+          <div className="logo">
+            {c.logo_url ? <img src={c.logo_url} alt={name} /> : null}
           </div>
-        )}
-        {desc && <p className="brand-desc">{desc}</p>}
-        
-        {/* Inline Social Buttons row in header */}
-        <SocialInline company={c} name={name} />
-      </header>
+          <h1 className="brand-name">{name}</h1>
+          {data.branches && data.branches.length >= 2 && data.branch && (
+            <div className="branch-header-pill" style={{ color: 'var(--primary-color)', background: 'var(--primary-soft)' }}>
+              📍 {isRtl ? data.branch.name_ar : data.branch.name_en}
+            </div>
+          )}
+          {desc && <p className="brand-desc">{desc}</p>}
+          
+          {/* Inline Social Buttons row in header */}
+          <SocialInline company={c} name={name} />
+        </header>
+      )}
 
       {/* Sticky Categories Bar */}
       <div className="menu-search-sticky-container">
@@ -576,8 +580,33 @@ export default function PublicMenu({ slug: propSlug, branchSlug: propBranchSlug,
                   }
                 }}
               >
-                <div className="product-img">
+                <div className="product-img" style={{ position: 'relative' }}>
                   {p.image_url && <img src={p.image_url} alt="" loading="lazy" />}
+                  {eligibleCouponCategories?.has(p.coupon_category) && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '6px',
+                      right: isRtl ? 'auto' : '6px',
+                      left: isRtl ? '6px' : 'auto',
+                      backgroundColor: 'var(--primary-color)',
+                      color: '#FFFFFF',
+                      fontSize: '10px',
+                      fontWeight: '800',
+                      padding: '4px 8px',
+                      borderRadius: '12px',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+                      zIndex: 2,
+                      whiteSpace: 'nowrap'
+                    }}>
+                      {isRtl ? (
+                        p.coupon_category === 'main_course' ? 'BOGO · طبق رئيسي' :
+                        p.coupon_category === 'dessert' ? 'BOGO · حلوى' : 'BOGO · مشروب'
+                      ) : (
+                        p.coupon_category === 'main_course' ? 'BOGO · Main' :
+                        p.coupon_category === 'dessert' ? 'BOGO · Dessert' : 'BOGO · Beverage'
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className="product-body">
                   <div>

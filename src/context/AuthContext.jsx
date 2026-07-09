@@ -33,6 +33,35 @@ export function AuthProvider({ children }) {
   const [memberships, setMemberships] = useState([]);
   const [currentCompanyId, setCurrentCompanyId] = useState('');
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [isCustomer, setIsCustomer] = useState(false);
+
+  const checkCustomerStatus = async (usr) => {
+    if (!usr) {
+      setIsCustomer(false);
+      return false;
+    }
+    if (isMockMode) {
+      try {
+        const mockCusts = JSON.parse(localStorage.getItem('qriousqr:mock_customer_users') || '[]');
+        const isCust = mockCusts.some(c => c.email.toLowerCase() === usr.email.toLowerCase());
+        setIsCustomer(isCust);
+        return isCust;
+      } catch {
+        setIsCustomer(false);
+        return false;
+      }
+    } else {
+      try {
+        const { data, error } = await supabase.rpc('customer_me');
+        const isCust = !error && Array.isArray(data) && data.length > 0;
+        setIsCustomer(isCust);
+        return isCust;
+      } catch {
+        setIsCustomer(false);
+        return false;
+      }
+    }
+  };
 
   const checkSuperAdminStatus = async (usr) => {
     if (!usr) {
@@ -185,6 +214,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     refreshMemberships();
     checkSuperAdminStatus(user);
+    checkCustomerStatus(user);
   }, [user]);
 
   const currentCompany = useMemo(() => {
@@ -420,8 +450,10 @@ export function AuthProvider({ children }) {
     try {
       if (isMockMode) {
         localStorage.removeItem('qrious:session');
+        localStorage.removeItem('qriousqr:mock_customer_session');
         setSession(null);
         setUser(null);
+        setIsCustomer(false);
         return { error: null };
       } else {
         const { error } = await supabase.auth.signOut();
@@ -449,7 +481,9 @@ export function AuthProvider({ children }) {
     activeRole,
     refreshMemberships,
     isSuperAdmin,
-    checkSuperAdminStatus
+    checkSuperAdminStatus,
+    isCustomer,
+    checkCustomerStatus
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

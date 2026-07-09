@@ -164,3 +164,32 @@ export async function emailExists(email) {
   if (error) return null;
   return Boolean(data);
 }
+
+export async function adminListCustomers(search = '', limit = 200) {
+  if (isMockMode) {
+    try {
+      const rows = JSON.parse(localStorage.getItem('qriousqr:mock_customers') || '[]');
+      const s = search.trim().toLowerCase();
+      return s
+        ? rows.filter(r =>
+            r.email.toLowerCase().includes(s) ||
+            (r.phone_code + r.phone).includes(search.replace(/[^\d+]/g, '')) ||
+            `${r.first_name} ${r.last_name}`.toLowerCase().includes(s))
+        : rows;
+    } catch { return []; }
+  }
+  const { data, error } = await supabase.rpc('admin_list_customers', { p_search: search || null, p_limit: limit });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function adminDeleteCustomer(id) {
+  if (isMockMode) {
+    const rows = JSON.parse(localStorage.getItem('qriousqr:mock_customers') || '[]');
+    const next = rows.filter(r => r.id !== id);
+    localStorage.setItem('qriousqr:mock_customers', JSON.stringify(next));
+    return;
+  }
+  const { error } = await supabase.from('customers').delete().eq('id', id);
+  if (error) throw error;
+}
