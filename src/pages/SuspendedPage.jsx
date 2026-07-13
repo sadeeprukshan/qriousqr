@@ -1,18 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { supabase } from '../supabaseClient.js';
 
 export default function SuspendedPage() {
-  const { signOut, currentCompany } = useAuth();
+  const { signOut, currentCompany, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   
   const [reason, setReason] = useState('');
   const [loading, setLoading] = useState(true);
 
+  if (authLoading) {
+    return <div style={{ display:'flex', height:'100vh', justifyContent:'center', alignItems:'center', fontFamily: 'var(--font-en)' }}><h3>Loading session...</h3></div>;
+  }
+  if (!user) return <Navigate to="/auth" replace />;
+
   useEffect(() => {
     const fetchSuspendedReason = async () => {
-      if (!currentCompany?.id) return;
+      if (!currentCompany?.id) {
+        setLoading(false);
+        return;
+      }
       try {
         const { data, error } = await supabase
           .from('companies')
@@ -45,6 +53,16 @@ export default function SuspendedPage() {
     return (
       <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', fontFamily: 'var(--font-en)' }}>
         <h3 style={{ color: 'var(--text-soft)' }}>Loading account status...</h3>
+      </div>
+    );
+  }
+
+  if (!currentCompany) {
+    return (
+      <div style={{ display:'flex', height:'100vh', flexDirection:'column', justifyContent:'center', alignItems:'center', gap:'12px', backgroundColor:'#FAF8F5', fontFamily: 'var(--font-en)' }}>
+        <h3>We couldn't find your restaurant.</h3>
+        <p style={{ color:'var(--text-soft)', fontSize:'14px' }}>Try signing out and signing back in, or contact support.</p>
+        <button onClick={handleSignOut} style={{ padding:'10px 20px', borderRadius:'8px', border:'1px solid var(--border)', background:'#fff', cursor:'pointer' }}>Sign out</button>
       </div>
     );
   }

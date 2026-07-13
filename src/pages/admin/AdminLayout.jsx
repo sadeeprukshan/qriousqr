@@ -1,12 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
+import ChangePasswordForm from '../../components/ChangePasswordForm.jsx';
 
 export default function AdminLayout() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [changePasswordModalOpen, setChangePasswordModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (!changePasswordModalOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setChangePasswordModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [changePasswordModalOpen]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -19,6 +32,7 @@ export default function AdminLayout() {
     if (path.startsWith('/admin/companies/')) return 'Companies / Details';
     if (path === '/admin/users') return 'Users';
     if (path === '/admin/customers') return 'Customers';
+    if (path === '/admin/claims') return 'Claims';
     if (path === '/admin/reports') return 'Reports';
     return 'Admin';
   };
@@ -166,6 +180,29 @@ export default function AdminLayout() {
           </Link>
 
           <Link
+            to="/admin/claims"
+            onClick={() => setMobileMenuOpen(false)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              padding: '12px 16px',
+              borderRadius: '8px',
+              color: '#FFFFFF',
+              textDecoration: 'none',
+              fontWeight: '600',
+              fontSize: '14px',
+              backgroundColor: location.pathname === '/admin/claims' ? 'rgba(255,255,255,0.06)' : 'transparent',
+              transition: 'background 0.2s'
+            }}
+          >
+            <svg style={{ marginRight: '12px' }} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect width="18" height="13" x="3" y="6" rx="2" />
+              <path d="M12 6v13" strokeDasharray="3 3" />
+            </svg>
+            Claims
+          </Link>
+
+          <Link
             to="/admin/reports"
             onClick={() => setMobileMenuOpen(false)}
             style={{
@@ -191,6 +228,34 @@ export default function AdminLayout() {
 
         {/* Sign Out Button */}
         <div style={{ padding: '24px 16px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          <button
+            onClick={() => setChangePasswordModalOpen(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              width: '100%',
+              padding: '12px 16px',
+              borderRadius: '8px',
+              color: '#a09e9c',
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              fontWeight: '600',
+              fontSize: '14px',
+              textAlign: 'left',
+              transition: 'background 0.2s, color 0.2s',
+              marginBottom: '8px'
+            }}
+            onMouseOver={(e) => { e.currentTarget.style.color = '#FFFFFF'; e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.06)'; }}
+            onMouseOut={(e) => { e.currentTarget.style.color = '#a09e9c'; e.currentTarget.style.backgroundColor = 'transparent'; }}
+          >
+            <svg style={{ marginRight: '12px' }} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+            Change password
+          </button>
+
           <button
             onClick={handleSignOut}
             style={{
@@ -288,6 +353,57 @@ export default function AdminLayout() {
           <Outlet />
         </main>
       </div>
+
+      {changePasswordModalOpen && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.4)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 1000
+          }}
+          onClick={() => setChangePasswordModalOpen(false)}
+        >
+          <div 
+            style={{
+              background: '#FFFFFF',
+              borderRadius: '12px',
+              padding: '24px',
+              width: '100%',
+              maxWidth: '480px',
+              boxSizing: 'border-box',
+              position: 'relative',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.08)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: 'var(--text)' }}>Change password</h3>
+              <button 
+                onClick={() => setChangePasswordModalOpen(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '20px',
+                  cursor: 'pointer',
+                  color: 'var(--text-soft)',
+                  padding: '4px',
+                  lineHeight: 1
+                }}
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* Body */}
+            <ChangePasswordForm lang="en" onSuccess={() => setChangePasswordModalOpen(false)} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

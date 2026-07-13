@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../supabaseClient.js';
+import { validateNewPassword } from '../lib/passwordRules.js';
 
 export default function SetPasswordPage() {
   const navigate = useNavigate();
@@ -38,12 +39,9 @@ export default function SetPasswordPage() {
     setErrorMsg('');
     setSuccessMsg('');
 
-    if (newPassword.length < 8) {
-      setErrorMsg('Password must be at least 8 characters long.');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setErrorMsg('Passwords do not match.');
+    const { ok, error } = validateNewPassword(newPassword, confirmPassword);
+    if (!ok) {
+      setErrorMsg(error);
       return;
     }
 

@@ -18,8 +18,8 @@ const T = {
     confirmPassword: 'Confirm Password',
     genderMale: 'Male',
     genderFemale: 'Female',
-    genderOther: 'Other',
-    genderNotsay: 'Prefer not to say',
+    genderPlaceholder: '— Select —',
+    genderRequired: 'Gender is required',
     submit: 'Register',
     submitting: 'Registering...',
     emailTaken: 'That email is already registered.',
@@ -51,8 +51,8 @@ const T = {
     confirmPassword: 'تأكيد كلمة المرور',
     genderMale: 'ذكر',
     genderFemale: 'أنثى',
-    genderOther: 'غير ذلك',
-    genderNotsay: 'أفضل عدم الإفصاح',
+    genderPlaceholder: '— اختر —',
+    genderRequired: 'الجنس مطلوب',
     submit: 'تسجيل',
     submitting: 'جاري التسجيل...',
     emailTaken: 'هذا البريد الإلكتروني مسجل بالفعل.',
@@ -93,6 +93,7 @@ export default function CustomerRegisterPage() {
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState('');
+  const [genderTouched, setGenderTouched] = useState(false);
 
   // Form fields
   const [firstName, setFirstName] = useState('');
@@ -101,7 +102,7 @@ export default function CustomerRegisterPage() {
   const [dialCode, setDialCode] = useState('+961');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
-  const [gender, setGender] = useState('prefer_not_to_say');
+  const [gender, setGender] = useState('');
   const [birthday, setBirthday] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -128,8 +129,9 @@ export default function CustomerRegisterPage() {
     const cleanPhone = phone.replace(/\D/g, '');
 
     // Validation
-    if (!trimmedFirst || !trimmedLast || !trimmedEmail || !cleanPhone || !birthday || !password || !confirmPassword) {
+    if (!trimmedFirst || !trimmedLast || !trimmedEmail || !cleanPhone || !birthday || !gender || !password || !confirmPassword) {
       setFormError(t.validationError);
+      setGenderTouched(true);
       return;
     }
 
@@ -630,14 +632,18 @@ export default function CustomerRegisterPage() {
             {/* Gender */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)' }}>
-                {t.gender}
+                {t.gender} <span style={{ color: '#EF4444' }}>*</span>
               </label>
               <select
                 value={gender}
-                onChange={(e) => setGender(e.target.value)}
+                onChange={(e) => {
+                  setGender(e.target.value);
+                  setGenderTouched(true);
+                }}
+                onBlur={() => setGenderTouched(true)}
                 style={{
                   padding: '10px 14px',
-                  border: '1px solid var(--border)',
+                  border: (genderTouched && !gender) ? '1px solid #EF4444' : '1px solid var(--border)',
                   borderRadius: '8px',
                   fontSize: '13px',
                   backgroundColor: '#FFFFFF',
@@ -645,11 +651,15 @@ export default function CustomerRegisterPage() {
                   boxSizing: 'border-box'
                 }}
               >
+                <option value="">{t.genderPlaceholder}</option>
                 <option value="male">{t.genderMale}</option>
                 <option value="female">{t.genderFemale}</option>
-                <option value="other">{t.genderOther}</option>
-                <option value="prefer_not_to_say">{t.genderNotsay}</option>
               </select>
+              {genderTouched && !gender && (
+                <span style={{ fontSize: '11px', color: '#EF4444', marginTop: '2px', display: 'block' }}>
+                  {t.genderRequired}
+                </span>
+              )}
             </div>
           </div>
 

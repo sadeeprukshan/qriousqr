@@ -1,18 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { supabase } from '../supabaseClient.js';
 
 export default function PendingApprovalPage() {
-  const { user, signOut, currentCompany, refreshMemberships } = useAuth();
+  const { user, signOut, currentCompany, refreshMemberships, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   
   const [companyDetails, setCompanyDetails] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  if (authLoading) {
+    return <div style={{ display:'flex', height:'100vh', justifyContent:'center', alignItems:'center', fontFamily: 'var(--font-en)' }}><h3>Loading session...</h3></div>;
+  }
+  if (!user) return <Navigate to="/auth" replace />;
+
   // Fetch full company details (like created_at and full name)
   const fetchDetails = async () => {
-    if (!currentCompany?.id) return;
+    if (!currentCompany?.id) {
+      setLoading(false);
+      return;
+    }
     try {
       const { data, error } = await supabase
         .from('companies')
@@ -119,6 +127,16 @@ export default function PendingApprovalPage() {
     );
   }
 
+  if (!currentCompany && !companyDetails) {
+    return (
+      <div style={{ display:'flex', height:'100vh', flexDirection:'column', justifyContent:'center', alignItems:'center', gap:'12px', backgroundColor:'#FAF8F5', fontFamily: 'var(--font-en)' }}>
+        <h3>We couldn't find your restaurant.</h3>
+        <p style={{ color:'var(--text-soft)', fontSize:'14px' }}>Try signing out and signing back in, or contact support.</p>
+        <button onClick={handleSignOut} style={{ padding:'10px 20px', borderRadius:'8px', border:'1px solid var(--border)', background:'#fff', cursor:'pointer' }}>Sign out</button>
+      </div>
+    );
+  }
+
   const isRestricted = companyDetails?.status === 'restricted';
   const nameEn = companyDetails?.name_en || currentCompany?.name_en || 'Your Restaurant';
   const nameAr = companyDetails?.name_ar || currentCompany?.name_ar || 'مطعمك';
@@ -210,16 +228,16 @@ export default function PendingApprovalPage() {
           textAlign: 'left',
           fontSize: '13px'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'between', marginBottom: '8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
             <span style={{ color: 'var(--text-soft)', flex: 1 }}>Restaurant Name</span>
             <strong style={{ color: 'var(--text)' }}>{nameEn}</strong>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'between', marginBottom: '8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
             <span style={{ color: 'var(--text-soft)', flex: 1 }}>Menu Slug</span>
             <strong style={{ color: 'var(--text)' }}>{slug}</strong>
           </div>
           {dateStr && (
-            <div style={{ display: 'flex', justifyContent: 'between' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: 'var(--text-soft)', flex: 1 }}>Submitted Date</span>
               <strong style={{ color: 'var(--text)' }}>{dateStr}</strong>
             </div>

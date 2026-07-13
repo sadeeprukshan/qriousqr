@@ -403,15 +403,12 @@ export function AuthProvider({ children }) {
 
         return { data: { user: mockSession.user }, error: null };
       } else {
-        // Client-generated throwaway password. The user replaces it via the verification-email flow.
-        const throwaway = crypto.randomUUID() + '-' + crypto.randomUUID();
-
+        if (!password || password.length < 6 || password.length > 72) {
+          throw new Error('Password must be 6–72 characters.');
+        }
         const { data, error } = await supabase.auth.signUp({
           email,
-          password: throwaway,
-          options: {
-            emailRedirectTo: `${window.location.origin}/auth/set-password`
-          }
+          password,
         });
         if (error) throw error;
         if (!data.user) throw new Error('Sign up failed');

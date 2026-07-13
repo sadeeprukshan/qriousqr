@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Routes, Route, Navigate, useParams, useNavigate, useSearchParams, Outlet } from 'react-router-dom';
+import { Routes, Route, Navigate, useParams, useNavigate, useSearchParams, Outlet, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import { loadCompanyBranches } from './services/dataService.js';
 import PublicMenu from './pages/PublicMenu.jsx';
@@ -25,9 +25,14 @@ import AdminCustomers from './pages/admin/AdminCustomers.jsx';
 import CustomerLoginPage from './pages/CustomerLoginPage.jsx';
 import CustomerDashboard from './pages/CustomerDashboard.jsx';
 import CustomerRestaurantSpace from './pages/CustomerRestaurantSpace.jsx';
+import CustomerLayout from './pages/CustomerLayout.jsx';
+import CustomerClaims from './pages/CustomerClaims.jsx';
+import CustomerProfile from './pages/CustomerProfile.jsx';
+import AdminClaims from './pages/admin/AdminClaims.jsx';
 
 function ProtectedRoute({ children }) {
   const { user, isSuperAdmin, isCustomer, loading, currentCompany } = useAuth();
+  const { pathname } = useLocation();
   
   if (loading) {
     return (
@@ -48,10 +53,10 @@ function ProtectedRoute({ children }) {
   }
   
   // Status check guards
-  if (currentCompany?.status === 'suspended') {
+  if (currentCompany?.status === 'suspended' && pathname !== '/suspended') {
     return <Navigate to="/suspended" replace />;
   }
-  if (currentCompany?.status === 'pending' || currentCompany?.status === 'restricted') {
+  if ((currentCompany?.status === 'pending' || currentCompany?.status === 'restricted') && pathname !== '/pending-approval') {
     return <Navigate to="/pending-approval" replace />;
   }
   
@@ -182,7 +187,7 @@ export default function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/auth/set-password" element={<SetPasswordPage />} />
-        <Route path="/pending-approval" element={<ProtectedRoute><PendingApprovalPage /></ProtectedRoute>} />
+        <Route path="/pending-approval" element={<PendingApprovalPage />} />
         <Route path="/suspended" element={<SuspendedPage />} />
         <Route
           path="/dashboard"
@@ -200,13 +205,21 @@ export default function App() {
           <Route path="companies/:companyId" element={<AdminCompanyDetail />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="customers" element={<AdminCustomers />} />
+          <Route path="claims" element={<AdminClaims />} />
           <Route path="reports" element={<AdminReports />} />
         </Route>
 
         <Route path="/customer/login" element={<CustomerLoginPage />} />
         <Route path="/customer/register" element={<CustomerRegisterPage />} />
-        <Route path="/customer" element={<CustomerGate><CustomerDashboard /></CustomerGate>} />
-        <Route path="/customer/menu/:slug" element={<CustomerGate><CustomerRestaurantSpace /></CustomerGate>} />
+        
+        {/* Customer Portal Layout (Handles Gate + Nav Island) */}
+        <Route element={<CustomerLayout />}>
+          <Route path="/customer" element={<CustomerDashboard />} />
+          <Route path="/customer/claims" element={<CustomerClaims />} />
+          <Route path="/customer/profile" element={<CustomerProfile />} />
+          <Route path="/customer/restaurant/:slug" element={<CustomerRestaurantSpace />} />
+          <Route path="/customer/menu/:slug" element={<CustomerRestaurantSpace />} />
+        </Route>
 
         <Route path="/menu/:slug" element={<PublicMenuRedirect />} />
         <Route path="/menu/:slug/:branchSlug" element={<PublicMenu />} />

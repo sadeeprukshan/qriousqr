@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase, isMockMode } from '../../supabaseClient.js';
 import { pendingClaimsForCompany, claimStep2 } from '../../services/couponService.js';
+import { translateCategory } from '../../lib/couponCategories.js';
 
 // Audio blip generator
 const playPing = () => {
@@ -348,6 +349,8 @@ function ClaimCard({ claim, onAuthorized, onRejected }) {
 export default function OperatorConsoleTab({ company }) {
   const [claims, setClaims] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [historyClaims, setHistoryClaims] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
   const [soundOn, setSoundOn] = useState(sessionStorage.getItem('qriousqr:sound_notification') !== 'off');
   
   const prevClaimsIdsRef = useRef([]);
@@ -381,8 +384,43 @@ export default function OperatorConsoleTab({ company }) {
     }
   };
 
+  const loadHistory = async () => {
+    if (!company?.id) return;
+    try {
+      if (isMockMode) {
+        const allClaims = JSON.parse(localStorage.getItem('qriousqr:mock_claims') || '[]');
+        const completed = allClaims
+          .filter(c => c.company_slug === company.slug && c.status === 'authorized')
+          .map(c => ({
+            claim_id: c.id,
+            completed_at: c.authorized_at || c.created_at,
+            category: c.category,
+            year: 2026,
+            customer_id: c.customer_id,
+            customer_name: `${c.customer_first_name || 'Demo'} ${c.customer_last_name || 'Diner'}`,
+            customer_phone: '+96171234567',
+            customer_email: c.customer_email || 'diner@qriousqr.local'
+          }));
+        setHistoryClaims(completed);
+      } else {
+        const { data, error } = await supabase.rpc('tenant_claimed_coupons', {
+          p_company_id: company.id,
+          p_days: 90
+        });
+        if (!error && data) {
+          setHistoryClaims(data);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadClaims();
+    loadHistory();
 
     // Subscribe to realtime postgres events
     const ch = supabase
@@ -391,15 +429,20 @@ export default function OperatorConsoleTab({ company }) {
         { event: '*', schema: 'public', table: 'coupon_claims', filter: `company_id=eq.${company.id}` },
         (payload) => {
           loadClaims();
+          loadHistory();
         })
       .subscribe();
 
     // Fallback polling (20 seconds)
-    const interval = setInterval(loadClaims, 20000);
+    const interval = setInterval(() => {
+      loadClaims();
+      loadHistory();
+    }, 20000);
 
     // Storage event for mock mode tab-to-tab sync
     const handleStorageChange = () => {
       loadClaims();
+      loadHistory();
     };
     window.addEventListener('storage', handleStorageChange);
 
@@ -412,6 +455,7 @@ export default function OperatorConsoleTab({ company }) {
 
   const handleAuthorized = (claimId) => {
     setClaims(prev => prev.filter(c => c.id !== claimId));
+    loadHistory();
   };
 
   const handleRejected = (claimId) => {
@@ -428,6 +472,7 @@ export default function OperatorConsoleTab({ company }) {
       } catch {}
     }
     setClaims(prev => prev.filter(c => c.id !== claimId));
+    loadHistory();
   };
 
   return (
@@ -534,6 +579,93 @@ export default function OperatorConsoleTab({ company }) {
           ))}
         </div>
       )}
+
+      {/* Claim History Section */}
+      <div style={{ marginTop: '24px', borderTop: '1px solid var(--border)', paddingTop: '32px' }}>
+        <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '800', color: 'var(--text)' }}>
+          Claim History — last 90 days
+        </h3>
+        <p style={{ margin: '0 0 20px 0', fontSize: '13px', color: 'var(--text-soft)' }}>
+          Latest authorized coupon claims for your store.
+        </p>
+
+        {historyLoading ? (
+          <div style={{ padding: '24px 0', color: 'var(--text-soft)', fontSize: '13px' }}>
+            Loading history logs...
+          </div>
+        ) : historyClaims.length === 0 ? (
+          <div style={{
+            border: '1px dashed var(--border)',
+            borderRadius: '12px',
+            padding: '30px 16px',
+            textAlign: 'center',
+            color: 'var(--text-soft)',
+            fontSize: '13px'
+          }}>
+            No coupons have been claimed here yet.
+          </div>
+        ) : (
+          <div style={{ background: '#FFFFFF', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+              <thead>
+                <tr style={{ background: '#FAF8F5', borderBottom: '1px solid var(--border)', color: 'var(--text-soft)', fontWeight: '700' }}>
+                  <th style={{ padding: '10px 16px' }}>When</th>
+                  <th style={{ padding: '10px 16px' }}>Category</th>
+                  <th style={{ padding: '10px 16px' }}>Customer</th>
+                  <th style={{ padding: '10px 16px' }}>Phone</th>
+                  <th style={{ padding: '10px 16px' }}>Email</th>
+                </tr>
+              </thead>
+              <tbody>
+                {historyClaims.map((claim) => {
+                  const dateStr = new Date(claim.completed_at).toLocaleString(undefined, {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  });
+                  return (
+                    <tr key={claim.claim_id} style={{ borderBottom: '1px solid var(--border)', color: 'var(--text)' }}>
+                      <td style={{ padding: '12px 16px', color: 'var(--text-soft)' }}>
+                        {dateStr}
+                      </td>
+                      <td style={{ padding: '12px 16px', fontWeight: '600' }}>
+                        {translateCategory(claim.category, 'en')}
+                      </td>
+                      <td style={{ padding: '12px 16px', fontWeight: '600' }}>
+                        {claim.customer_name}
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        {claim.customer_phone ? (
+                          <a href={`tel:${claim.customer_phone}`} style={{ color: 'var(--primary-color, #FF5722)', textDecoration: 'none', fontWeight: '600' }}>
+                            {claim.customer_phone}
+                          </a>
+                        ) : (
+                          <span style={{ color: 'var(--text-soft)' }}>—</span>
+                        )}
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        {claim.customer_email ? (
+                          <a href={`mailto:${claim.customer_email}`} style={{ color: 'var(--text-soft)', textDecoration: 'underline' }}>
+                            {claim.customer_email}
+                          </a>
+                        ) : (
+                          <span style={{ color: 'var(--text-soft)' }}>—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {historyClaims.length >= 100 && (
+              <div style={{ padding: '10px 16px', background: '#FAF8F5', color: 'var(--text-soft)', fontSize: '11px', textAlign: 'center', borderTop: '1px solid var(--border)' }}>
+                Showing latest 100. Older claims not yet browseable.
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

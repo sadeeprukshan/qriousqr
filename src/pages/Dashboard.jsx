@@ -36,6 +36,7 @@ import FileInput from '../components/FileInput.jsx';
 import LineChart from '../components/LineChart.jsx';
 import BarChart from '../components/BarChart.jsx';
 import { useInstallPrompt } from '../hooks/useInstallPrompt.js';
+import ChangePasswordForm from '../components/ChangePasswordForm.jsx';
 
 const PROFILE_CURRENCIES = [
   { code: 'USD', symbol: '$', name: 'US Dollar' },
@@ -1722,6 +1723,16 @@ export default function Dashboard() {
                     </button>
                   )}
                 </form>
+
+                <div className="settings-card" style={{ marginTop: '24px' }}>
+                  <h3>Security</h3>
+                  <p style={{ fontSize: '13px', color: 'var(--text-soft)', marginBottom: '16px' }}>
+                    Change your account password.
+                  </p>
+                  <div style={{ maxWidth: '400px' }}>
+                    <ChangePasswordForm lang="en" />
+                  </div>
+                </div>
               </div>
 
               {/* Live Preview Column */}

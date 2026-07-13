@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { supabase, isMockMode } from '../supabaseClient.js';
 import { emailExists } from '../services/adminService.js';
+import { validateNewPassword } from '../lib/passwordRules.js';
 
 const COUNTRIES = [
   { code: 'LB', name: 'Lebanon', currency: 'LBP' },
@@ -159,14 +160,11 @@ export default function AuthPage() {
       setErrorMsg('Please fill in all fields.');
       return false;
     }
-    // Only require password on sign-in or mock signup
-    if (!isRegister || isMockMode) {
-      if (!password) {
-        setErrorMsg('Please fill in all fields.');
-        return false;
-      }
-      if (password.length < 6) {
-        setErrorMsg('Password must be at least 6 characters long.');
+    // Password required on sign-in or direct registration / mock signup
+    if (!inviteToken) {
+      const { ok, error } = validateNewPassword(password, isRegister ? confirmPassword : password);
+      if (!ok) {
+        setErrorMsg(error);
         return false;
       }
     }
@@ -205,7 +203,7 @@ export default function AuthPage() {
       if (error) {
         setErrorMsg(error.message || 'Failed to create account.');
       } else {
-        if (!isMockMode && !inviteToken) {
+        if (!isMockMode && inviteToken) {
           setIsEmailConfirmSent(true);
         } else {
           setSuccessMsg('Account created successfully! Redirecting...');
@@ -239,12 +237,9 @@ export default function AuthPage() {
     setErrorMsg('');
     setSuccessMsg('');
 
-    if (newPassword.length < 6) {
-      setErrorMsg('Password must be at least 6 characters.');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setErrorMsg('Passwords do not match.');
+    const { ok, error } = validateNewPassword(newPassword, confirmPassword);
+    if (!ok) {
+      setErrorMsg(error);
       return;
     }
 
@@ -491,7 +486,7 @@ export default function AuthPage() {
                 )}
               </div>
 
-              {(!isRegister || isMockMode) && (
+              {!inviteToken && (
                 <div className="form-group">
                   <label htmlFor="password">Password</label>
                   <input 
@@ -525,6 +520,20 @@ export default function AuthPage() {
                       </button>
                     </div>
                   )}
+                </div>
+              )}
+
+              {isRegister && !inviteToken && (
+                <div className="form-group">
+                  <label htmlFor="confirmPassword">Confirm password</label>
+                  <input 
+                    id="confirmPassword"
+                    type="password" 
+                    placeholder="Confirm password" 
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required 
+                  />
                 </div>
               )}
 
@@ -618,10 +627,21 @@ export default function AuthPage() {
                   color: 'var(--text-soft, #71717a)',
                   lineHeight: '1.4'
                 }}>
-                  We'll email you a link to set your password.<br />
-                  <span style={{ direction: 'rtl', display: 'inline-block', marginTop: '2px' }}>
-                    سنرسل لك رابطاً عبر البريد الإلكتروني لتعيين كلمة المرور الخاصة بك.
-                  </span>
+                  {inviteToken ? (
+                    <>
+                      We'll email you a link to set your password.<br />
+                      <span style={{ direction: 'rtl', display: 'inline-block', marginTop: '2px' }}>
+                        سنرسل لك رابطاً عبر البريد الإلكتروني لتعيين كلمة المرور الخاصة بك.
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      You'll use this password to sign in.<br />
+                      <span style={{ direction: 'rtl', display: 'inline-block', marginTop: '2px' }}>
+                        ستستخدم كلمة المرور هذه لتسجيل الدخول.
+                      </span>
+                    </>
+                  )}
                 </div>
               )}
             </form>
