@@ -1,6 +1,7 @@
 {
-  "name": "QRious Menu",
-  "short_name": "Menu",
+  "name": "QriousQR",
+  "short_name": "QriousQR",
+  "description": "QR menus that reward loyal diners.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#FAF8F5",

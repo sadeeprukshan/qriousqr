@@ -178,14 +178,21 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="landing-footer">
-        <div className="footer-container">
-          <p>&copy; {new Date().getFullYear()} QRious. All rights reserved.</p>
-          <div className="footer-links">
-            <Link to="/auth">Owner Login</Link>
-            <Link to="/menu/kantami">Demo Menu</Link>
-          </div>
+      <footer style={{
+        padding: '32px 20px 24px',
+        textAlign: 'center',
+        fontSize: '13px',
+        color: 'var(--text-soft)',
+        borderTop: '1px solid var(--border)',
+        marginTop: '40px'
+      }}>
+        <div style={{ marginBottom: '8px' }}>
+          <Link to="/auth" style={{ color: 'inherit', textDecoration: 'none', margin: '0 12px', fontWeight: '600' }}>Owner Login</Link>
+          <Link to="/menu/kantami" style={{ color: 'inherit', textDecoration: 'none', margin: '0 12px', fontWeight: '600' }}>Demo Menu</Link>
+          <Link to="/legal/terms" style={{ color: 'inherit', textDecoration: 'underline', margin: '0 12px' }}>Terms</Link>
+          <Link to="/legal/privacy" style={{ color: 'inherit', textDecoration: 'underline', margin: '0 12px' }}>Privacy</Link>
         </div>
+        <div>© {new Date().getFullYear()} QriousQR. All rights reserved.</div>
       </footer>
     </div>
   );

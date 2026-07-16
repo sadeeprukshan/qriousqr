@@ -12,6 +12,9 @@ import PublicMenuRedirect from './pages/PublicMenuRedirect.jsx';
 import SetPasswordPage from './pages/SetPasswordPage.jsx';
 import PendingApprovalPage from './pages/PendingApprovalPage.jsx';
 import SuspendedPage from './pages/SuspendedPage.jsx';
+import TermsPage from './pages/legal/TermsPage.jsx';
+import PrivacyPage from './pages/legal/PrivacyPage.jsx';
+import RootErrorBoundary from './components/RootErrorBoundary.jsx';
 
 // Admin Page Imports
 import AdminLogin from './pages/admin/AdminLogin.jsx';
@@ -183,51 +186,55 @@ function ProductDetailRedirect() {
 export default function App() {
   return (
     <AuthProvider>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/auth" element={<AuthPage />} />
-        <Route path="/auth/set-password" element={<SetPasswordPage />} />
-        <Route path="/pending-approval" element={<PendingApprovalPage />} />
-        <Route path="/suspended" element={<SuspendedPage />} />
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
-        
-        {/* Super Admin Panel Routes */}
-        <Route path="/admin/login" element={<AdminLogin />} />
-        <Route path="/admin" element={<SuperAdminGate><AdminLayout /></SuperAdminGate>}>
-          <Route index element={<AdminCompanies />} />
-          <Route path="companies/:companyId" element={<AdminCompanyDetail />} />
-          <Route path="users" element={<AdminUsers />} />
-          <Route path="customers" element={<AdminCustomers />} />
-          <Route path="claims" element={<AdminClaims />} />
-          <Route path="reports" element={<AdminReports />} />
-        </Route>
+      <RootErrorBoundary>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/auth" element={<AuthPage />} />
+          <Route path="/auth/set-password" element={<SetPasswordPage />} />
+          <Route path="/pending-approval" element={<PendingApprovalPage />} />
+          <Route path="/suspended" element={<SuspendedPage />} />
+          <Route path="/legal/terms" element={<TermsPage />} />
+          <Route path="/legal/privacy" element={<PrivacyPage />} />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          
+          {/* Super Admin Panel Routes */}
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin" element={<SuperAdminGate><AdminLayout /></SuperAdminGate>}>
+            <Route index element={<AdminCompanies />} />
+            <Route path="companies/:companyId" element={<AdminCompanyDetail />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="customers" element={<AdminCustomers />} />
+            <Route path="claims" element={<AdminClaims />} />
+            <Route path="reports" element={<AdminReports />} />
+          </Route>
 
-        <Route path="/customer/login" element={<CustomerLoginPage />} />
-        <Route path="/customer/register" element={<CustomerRegisterPage />} />
-        
-        {/* Customer Portal Layout (Handles Gate + Nav Island) */}
-        <Route element={<CustomerLayout />}>
-          <Route path="/customer" element={<CustomerDashboard />} />
-          <Route path="/customer/claims" element={<CustomerClaims />} />
-          <Route path="/customer/profile" element={<CustomerProfile />} />
-          <Route path="/customer/restaurant/:slug" element={<CustomerRestaurantSpace />} />
-          <Route path="/customer/menu/:slug" element={<CustomerRestaurantSpace />} />
-        </Route>
+          <Route path="/customer/login" element={<CustomerLoginPage />} />
+          <Route path="/customer/register" element={<CustomerRegisterPage />} />
+          
+          {/* Customer Portal Layout (Handles Gate + Nav Island) */}
+          <Route element={<CustomerLayout />}>
+            <Route path="/customer" element={<CustomerDashboard />} />
+            <Route path="/customer/claims" element={<CustomerClaims />} />
+            <Route path="/customer/profile" element={<CustomerProfile />} />
+            <Route path="/customer/restaurant/:slug" element={<CustomerRestaurantSpace />} />
+            <Route path="/customer/menu/:slug" element={<CustomerRestaurantSpace />} />
+          </Route>
 
-        <Route path="/menu/:slug" element={<PublicMenuRedirect />} />
-        <Route path="/menu/:slug/:branchSlug" element={<PublicMenu />} />
-        <Route path="/menu/:slug/product/:productId" element={<ProductDetailRedirect />} />
-        <Route path="/menu/:slug/:branchSlug/product/:productId" element={<ProductDetail />} />
-        <Route path="/invite/:token" element={<InviteAccept />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          <Route path="/menu/:slug" element={<PublicMenuRedirect />} />
+          <Route path="/menu/:slug/:branchSlug" element={<PublicMenu />} />
+          <Route path="/menu/:slug/product/:productId" element={<ProductDetailRedirect />} />
+          <Route path="/menu/:slug/:branchSlug/product/:productId" element={<ProductDetail />} />
+          <Route path="/invite/:token" element={<InviteAccept />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </RootErrorBoundary>
     </AuthProvider>
   );
 }

@@ -94,6 +94,7 @@ export default function CustomerRegisterPage() {
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState('');
   const [genderTouched, setGenderTouched] = useState(false);
+  const [acceptedTos, setAcceptedTos] = useState(false);
 
   // Form fields
   const [firstName, setFirstName] = useState('');
@@ -733,10 +734,32 @@ export default function CustomerRegisterPage() {
             </div>
           </div>
 
+          {/* Terms & Privacy Consent */}
+          <div style={{ display: 'flex', gap: '8px', margin: '12px 0', fontSize: '13px', color: 'var(--text-soft)', textAlign: isRtl ? 'right' : 'left', direction: isRtl ? 'rtl' : 'ltr' }}>
+            <input
+              id="tos-accept"
+              type="checkbox"
+              checked={acceptedTos}
+              onChange={(e) => setAcceptedTos(e.target.checked)}
+              style={{ marginTop: '3px', flex: '0 0 auto' }}
+            />
+            <label htmlFor="tos-accept" style={{ lineHeight: 1.5 }}>
+              {lang === 'ar' ? (
+                <>
+                  أوافق على <Link to="/legal/terms" target="_blank" rel="noopener">الشروط</Link> و <Link to="/legal/privacy" target="_blank" rel="noopener">سياسة الخصوصية</Link>.
+                </>
+              ) : (
+                <>
+                  I agree to the <Link to="/legal/terms" target="_blank" rel="noopener">Terms</Link> and <Link to="/legal/privacy" target="_blank" rel="noopener">Privacy Policy</Link>.
+                </>
+              )}
+            </label>
+          </div>
+
           {/* Submit */}
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !acceptedTos}
             style={{
               padding: '14px',
               borderRadius: '8px',
@@ -745,10 +768,10 @@ export default function CustomerRegisterPage() {
               border: 'none',
               fontSize: '14px',
               fontWeight: '700',
-              cursor: loading ? 'not-allowed' : 'pointer',
+              cursor: (loading || !acceptedTos) ? 'not-allowed' : 'pointer',
               transition: 'background 0.2s',
               marginTop: '10px',
-              opacity: loading ? 0.7 : 1
+              opacity: (loading || !acceptedTos) ? 0.7 : 1
             }}
           >
             {loading ? t.submitting : t.submit}

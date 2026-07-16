@@ -17,7 +17,7 @@ async function urlToDataUrl(url) {
       reader.readAsDataURL(blob);
     });
   } catch (err) {
-    console.warn('[QR card] logo pre-fetch failed:', err);
+    console.error('[QR card] logo pre-fetch failed:', err);
     return null;
   }
 }
@@ -316,7 +316,7 @@ function QrCardItem({ id, company, title, url, filename, qrColor, resolvedColor,
       a.click();
       URL.revokeObjectURL(a.href);
     } catch (err) {
-      console.warn("Retrying PNG generation without logo due to CORS restriction:", err);
+      console.error("Retrying PNG generation without logo due to CORS restriction:", err);
       try {
         // Fallback: generate without logo and alert user
         const blob = await generate(true);

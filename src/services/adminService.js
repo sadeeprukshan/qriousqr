@@ -74,7 +74,6 @@ export async function adminChangeCompanyStatus(cid, newStatus, reason) {
 
 export async function adminResetOwnerPassword(email) {
   if (isMockMode) {
-    console.log('[mock] password reset triggered for', email);
     return;
   }
   const { error } = await supabase.auth.resetPasswordForEmail(email, {

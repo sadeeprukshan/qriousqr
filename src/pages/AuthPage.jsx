@@ -87,6 +87,11 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [isEmailLocked, setIsEmailLocked] = useState(false);
   const [showNoAccountDialog, setShowNoAccountDialog] = useState(false);
+  const [acceptedTos, setAcceptedTos] = useState(false);
+
+  useEffect(() => {
+    setAcceptedTos(false);
+  }, [isRegister]);
 
   // Prefill email if invite email is present
   useEffect(() => {
@@ -279,7 +284,7 @@ export default function AuthPage() {
         });
       }
     } catch (err) {
-      console.warn('Password reset request error:', err);
+      console.error('Password reset request error:', err);
     } finally {
       setSuccessMsg('Reset link sent! Please check your email.');
       setLoading(false);
@@ -611,10 +616,25 @@ export default function AuthPage() {
                 </div>
               )}
 
+              {isRegister && !inviteToken && (
+                <div style={{ display: 'flex', gap: '8px', margin: '12px 0', fontSize: '13px', color: 'var(--text-soft)', textAlign: 'left' }}>
+                  <input
+                    id="tos-accept"
+                    type="checkbox"
+                    checked={acceptedTos}
+                    onChange={(e) => setAcceptedTos(e.target.checked)}
+                    style={{ marginTop: '3px', flex: '0 0 auto' }}
+                  />
+                  <label htmlFor="tos-accept" style={{ lineHeight: 1.5 }}>
+                    I agree to the <Link to="/legal/terms" target="_blank" rel="noopener">Terms</Link> and <Link to="/legal/privacy" target="_blank" rel="noopener">Privacy Policy</Link>.
+                  </label>
+                </div>
+              )}
+
               <button 
                 type="submit" 
                 className="btn-submit-auth"
-                disabled={loading}
+                disabled={loading || (isRegister && !inviteToken && !acceptedTos)}
               >
                 {loading ? 'Processing...' : (isRegister ? (inviteToken ? 'Create Account & Join' : 'Register & Build Menu') : 'Sign In')}
               </button>

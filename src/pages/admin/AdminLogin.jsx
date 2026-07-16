@@ -79,7 +79,7 @@ export default function AdminLogin() {
         });
       }
     } catch (err) {
-      console.warn('Password reset request error:', err);
+      console.error('Password reset request error:', err);
     } finally {
       setSuccessMsg('Reset link sent! Please check your email.');
       setSigningIn(false);
