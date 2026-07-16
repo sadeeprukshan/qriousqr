@@ -419,19 +419,26 @@ export default function OperatorConsoleTab({ company }) {
   };
 
   useEffect(() => {
+    if (!company?.id) return;
+
     loadClaims();
     loadHistory();
 
     // Subscribe to realtime postgres events
-    const ch = supabase
-      .channel(`claims:${company.id}`)
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'coupon_claims', filter: `company_id=eq.${company.id}` },
-        (payload) => {
-          loadClaims();
-          loadHistory();
-        })
-      .subscribe();
+    let ch = null;
+    try {
+      ch = supabase
+        .channel(`claims:${company.id}`)
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'coupon_claims', filter: `company_id=eq.${company.id}` },
+          (payload) => {
+            loadClaims();
+            loadHistory();
+          })
+        .subscribe();
+    } catch (err) {
+      console.error('Operator realtime subscription failed; falling back to polling only.', err);
+    }
 
     // Fallback polling (20 seconds)
     const interval = setInterval(() => {
@@ -447,7 +454,9 @@ export default function OperatorConsoleTab({ company }) {
     window.addEventListener('storage', handleStorageChange);
 
     return () => {
-      supabase.removeChannel(ch);
+      if (ch) {
+        try { supabase.removeChannel(ch); } catch (e) { /* ignore SDK teardown errors */ }
+      }
       clearInterval(interval);
       window.removeEventListener('storage', handleStorageChange);
     };
