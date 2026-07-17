@@ -73,15 +73,23 @@ export default function AdminLogin() {
     }
     setSigningIn(true);
     try {
-      if (!isMockMode) {
-        await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/auth?mode=reset`
-        });
+      if (isMockMode) {
+        setSuccessMsg('Reset link sent! Please check your email.');
+        return;
       }
-    } catch (err) {
-      console.error('Password reset request error:', err);
-    } finally {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth?mode=reset`,
+      });
+      if (error) {
+        console.error('Password reset request error:', error);
+        setErrorMsg(error.message || 'Could not send reset link. Please try again in a few minutes.');
+        return;
+      }
       setSuccessMsg('Reset link sent! Please check your email.');
+    } catch (err) {
+      console.error('Password reset request threw:', err);
+      setErrorMsg('Network error. Please check your connection and try again.');
+    } finally {
       setSigningIn(false);
     }
   };
