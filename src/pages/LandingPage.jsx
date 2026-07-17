@@ -1,7 +1,21 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 
 export default function LandingPage() {
+  const navigate = useNavigate();
+
+  // Catch Supabase password-recovery redirects that land at the site root.
+  // The Supabase email link is Site URL + hash — since our Site URL is `/`,
+  // the recovery hash comes here. Route it to /auth?mode=reset, preserving
+  // the hash so AuthPage.jsx:59 can detect it and the Supabase JS SDK can
+  // consume the access_token to open the reset form.
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash && hash.includes('type=recovery')) {
+      navigate(`/auth?mode=reset${hash}`, { replace: true });
+    }
+  }, [navigate]);
+
   return (
     <div className="landing-page">
       {/* Navigation */}

@@ -62,6 +62,10 @@ export default function AuthPage() {
 
   // Auth redirect guards
   useEffect(() => {
+    // Do not redirect while completing a password recovery — the user needs
+    // to stay on this page long enough to enter a new password.
+    if (isResetMode) return;
+
     if (user) {
       if (isSuperAdmin) {
         navigate('/admin', { replace: true });
@@ -69,7 +73,7 @@ export default function AuthPage() {
         navigate(inviteToken ? `/invite/${inviteToken}` : '/dashboard', { replace: true });
       }
     }
-  }, [user, isSuperAdmin, navigate, inviteToken]);
+  }, [user, isSuperAdmin, navigate, inviteToken, isResetMode]);
 
   // Form Fields
   const [email, setEmail] = useState('');
