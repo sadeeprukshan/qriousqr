@@ -22,7 +22,18 @@ export default function LandingPage() {
             <a href="#features">Features</a>
             <a href="#how-it-works">How it Works</a>
             <Link to="/menu/kantami">Live Demo</Link>
-            <Link to="/customer/register" style={{ fontSize: '13px', color: 'var(--text-soft)', marginRight: '16px', textDecoration: 'none', fontWeight: '500' }}>Join as Customer</Link>
+            <Link
+              to="/customer/login"
+              style={{ fontSize: '13px', color: 'var(--text-soft)', marginRight: '8px', textDecoration: 'none', fontWeight: '500' }}
+            >
+              Customer Login
+            </Link>
+            <Link
+              to="/customer/register"
+              style={{ fontSize: '13px', color: 'var(--text-soft)', marginRight: '16px', textDecoration: 'none', fontWeight: '500' }}
+            >
+              Join as Customer
+            </Link>
             <Link to="/auth" className="btn-link">Sign In</Link>
             <Link to="/auth?mode=register" className="btn-primary-landing">Get Started Free</Link>
           </div>

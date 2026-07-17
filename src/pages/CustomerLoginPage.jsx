@@ -173,7 +173,7 @@ export default function CustomerLoginPage() {
           return;
         }
 
-        navigate('/customer', { replace: true });
+        window.location.href = '/customer';
       }
     } catch (err) {
       console.error(err);
