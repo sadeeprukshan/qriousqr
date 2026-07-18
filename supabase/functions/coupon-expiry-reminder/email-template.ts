@@ -1,169 +1,231 @@
-// Custom Base64 helper since btoa is global in Deno but typescript requires safe typing
-const getLogoDataUrl = (): string => {
-  const logoSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="32" viewBox="0 0 120 32" fill="none">
-  <g transform="translate(0, 4)">
-    <rect width="24" height="24" rx="4" fill="#FF5722" />
-    <rect x="5" y="5" width="5" height="5" rx="1" fill="#FFFFFF" />
-    <rect x="5" y="14" width="5" height="5" rx="1" fill="#FFFFFF" />
-    <rect x="14" y="5" width="5" height="5" rx="1" fill="#FFFFFF" />
-    <rect x="14" y="14" width="5" height="5" rx="1" fill="#FFFFFF" />
-  </g>
-  <text x="32" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="20" font-weight="800" fill="#111111">QRious</text>
-</svg>`;
-  return 'data:image/svg+xml;base64,' + btoa(logoSvg);
-};
-
-const getPlaceholderLogoDataUrl = (): string => {
-  const placeholderLogoSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" fill="none">
-  <circle cx="16" cy="16" r="16" fill="#FAF8F5" />
-  <path d="M12 9v7h2V9h-2zm3 0v7h2V9h-2zm3 0v14h2V9h-2z" fill="#FF5722" />
-</svg>`;
-  return 'data:image/svg+xml;base64,' + btoa(placeholderLogoSvg);
-};
-
-interface Restaurant {
-  name: string;
-  slug: string;
-  logo_url?: string | null;
-}
-
-interface Recipient {
+export interface Recipient {
   customer_id: string;
   email: string;
   first_name: string | null;
   unused_count: number;
   expiring_categories: string[];
-  restaurants: Restaurant[];
+  restaurants: Array<{
+    id: string;
+    slug: string;
+    name: string;
+    logo_url: string | null;
+  }>;
 }
 
-function formatCategory(cat: string): string {
-  return cat.split('_')
-    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(' ');
+const CATEGORY_MAP: Record<string, string> = {
+  main_course: "Main Course",
+  dessert: "Dessert",
+  beverage: "Beverage",
+  appetizer: "Appetizer",
+  salad: "Salad",
+  shisha: "Shisha"
+};
+
+function getCategoryLabel(cat: string): string {
+  return CATEGORY_MAP[cat] || cat.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
-export function renderEmail(recipient: Recipient, tier_days: number, appBaseUrl: string): string {
-  const name = recipient.first_name || 'there';
-  const count = recipient.unused_count;
-  const logoDataUrl = getLogoDataUrl();
-  const placeholderLogo = getPlaceholderLogoDataUrl();
+function plural(count: number, singular: string): string {
+  return count === 1 ? singular : `${singular}s`;
+}
 
-  const couponText = count === 1 ? 'coupon' : 'coupons';
-  const verbText = count === 1 ? 'is' : 'are';
-  
-  // Expiry time text based on tier
-  const expiryTimeText = tier_days === 7 ? 'in a week' : 'tomorrow';
+export function renderReminderEmail(r: Recipient, tier_days: number): string {
+  const appBaseUrl = Deno.env.get("APP_BASE_URL") || "https://qriousqr.com";
 
-  // Format category pills HTML
-  const categoriesHtml = (recipient.expiring_categories || [])
+  // Build category pills
+  const pillsHtml = r.expiring_categories
     .map(cat => `
-      <span style="display: inline-block; background-color: #FAF8F5; border: 1px solid #EAEAEA; border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 700; color: #555555; margin-right: 8px; margin-bottom: 8px;">
-        ${formatCategory(cat)}
-      </span>
-    `).join('');
+      <span style="
+        display: inline-block;
+        background-color: #FFF6F2;
+        color: #FF5722;
+        font-size: 12px;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 4px;
+        margin: 4px 4px 4px 0;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      ">${getCategoryLabel(cat)}</span>
+    `)
+    .join('');
 
-  // Format restaurant rows HTML
-  const restaurantsHtml = (recipient.restaurants || [])
-    .map(r => `
-      <table cellpadding="0" cellspacing="0" border="0" style="width: 100%; margin-bottom: 12px; border: 1px solid #F3F4F6; padding: 12px; border-radius: 8px; background-color: #FFFFFF;">
-        <tr>
-          <td style="width: 32px; vertical-align: middle;">
-            <img src="${r.logo_url || placeholderLogo}" width="32" height="32" style="border-radius: 16px; object-fit: cover; display: block;" />
-          </td>
-          <td style="padding-left: 12px; vertical-align: middle;">
-            <a href="${appBaseUrl}/customer/restaurant/${r.slug}" target="_blank" style="font-size: 14px; font-weight: 700; color: #FF5722; text-decoration: none; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-              ${r.name} &rarr;
-            </a>
-          </td>
-        </tr>
-      </table>
-    `).join('');
+  // Build restaurants list
+  const restaurantsHtml = r.restaurants
+    .map((rest, index) => {
+      const isLast = index === r.restaurants.length - 1;
+      const borderStyle = isLast ? "" : "border-bottom: 1px solid #EBEBEB;";
+      return `
+        <div style="padding: 10px 0; ${borderStyle} text-align: left;">
+          <a href="${appBaseUrl}/customer/restaurant/${rest.slug}"
+             target="_blank"
+             style="
+               font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+               font-size: 14px;
+               font-weight: 700;
+               color: #FF5722;
+               text-decoration: none;
+             ">${rest.name}</a>
+        </div>
+      `;
+    })
+    .join('');
 
-  return `
-<!DOCTYPE html>
-<html>
+  // Conditional Copy
+  const greeting = `Hi ${r.first_name ?? "there"},`;
+  
+  const bodyText = tier_days === 7
+    ? `You have ${r.unused_count} unused BOGO ${plural(r.unused_count, 'coupon')} at ${r.restaurants.length} ${plural(r.restaurants.length, 'restaurant')} that expire on December 31.`
+    : `Last chance — your ${r.unused_count} unused BOGO ${plural(r.unused_count, 'coupon')} expire tomorrow at midnight.`;
+
+  const ctaLabel = tier_days === 7
+    ? "View my coupons"
+    : "Redeem before midnight";
+
+  const postCtaText = tier_days === 7
+    ? "Your unused coupons roll off on December 31 at midnight UTC. Redeem them in-restaurant with your PIN."
+    : "After tomorrow midnight UTC, unused coupons expire and can't be redeemed. New ones come with the new year.";
+
+  return `<!doctype html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Your BOGO Coupons Expiry Reminder</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Your QriousQR coupon reminder</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #F9FAFB; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;">
-  <table cellpadding="0" cellspacing="0" border="0" style="width: 100%; background-color: #F9FAFB; padding: 32px 16px;">
+<body style="
+  margin: 0;
+  padding: 40px 16px;
+  background: #FAF8F5;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: #111;
+">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
     <tr>
       <td align="center">
-        <!-- Mail Container -->
-        <table cellpadding="0" cellspacing="0" border="0" style="width: 100%; max-width: 560px; background-color: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.02);">
-          
-          <!-- Header -->
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width: 560px;">
           <tr>
-            <td style="padding: 32px 32px 20px 32px; border-bottom: 1px solid #F3F4F6;">
-              <img src="${logoDataUrl}" height="32" alt="QRious" style="display: block;" />
-            </td>
-          </tr>
+            <td style="
+              background: #FFFFFF;
+              border-radius: 12px;
+              padding: 40px 32px;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            ">
+              <!-- WORDMARK -->
+              <div style="text-align: center; margin-bottom: 32px;">
+                <span style="
+                  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                  font-size: 24px;
+                  font-weight: 800;
+                  color: #FF5722;
+                  letter-spacing: -0.02em;
+                ">QriousQR</span>
+              </div>
 
-          <!-- Content Body -->
-          <tr>
-            <td style="padding: 32px;">
-              <h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 800; color: #111111; line-height: 1.3;">
-                Hi ${name},
-              </h2>
-              
-              <p style="margin: 0 0 24px 0; font-size: 15px; color: #4B5563; line-height: 1.6;">
-                Don't let your rewards go to waste! You have <strong style="color: #111111;">${count}</strong> unused BOGO ${couponText} expiring on <strong style="color: #111111;">December 31</strong>.
+              <!-- BODY -->
+              <p style="
+                margin: 0 0 16px 0;
+                font-size: 15px;
+                color: #111111;
+                line-height: 1.6;
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+              ">
+                ${greeting}
               </p>
 
-              <!-- Category Pills Section -->
-              ${categoriesHtml ? `
-                <div style="margin-bottom: 24px;">
-                  <div style="font-size: 11px; font-weight: 700; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
-                    Expiring Categories
-                  </div>
-                  <div>
-                    ${categoriesHtml}
-                  </div>
-                </div>
-              ` : ''}
+              <p style="
+                margin: 0 0 20px 0;
+                font-size: 16px;
+                font-weight: 700;
+                color: #111111;
+                line-height: 1.5;
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+              ">
+                ${bodyText}
+              </p>
 
-              <!-- Restaurants List Section -->
-              ${restaurantsHtml ? `
-                <div style="margin-bottom: 32px;">
-                  <div style="font-size: 11px; font-weight: 700; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;">
-                    Available At
-                  </div>
-                  <div>
-                    ${restaurantsHtml}
-                  </div>
-                </div>
-              ` : ''}
+              <!-- Category pills -->
+              <div style="margin: 16px 0;">
+                ${pillsHtml}
+              </div>
 
-              <!-- CTA Button Section -->
-              <table cellpadding="0" cellspacing="0" border="0" style="width: 100%;">
+              <!-- Restaurants section header -->
+              <div style="
+                margin: 24px 0 8px 0;
+                font-size: 11px;
+                font-weight: 700;
+                color: #666666;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                text-align: left;
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+              ">Restaurants</div>
+
+              <!-- Restaurants list -->
+              <div style="margin: 0 0 28px 0;">
+                ${restaurantsHtml}
+              </div>
+
+              <!-- CTA -->
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 28px auto;">
                 <tr>
-                  <td align="center" style="padding: 8px 0 16px 0;">
-                    <a href="${appBaseUrl}/customer" target="_blank" style="display: inline-block; background-color: #FF5722; color: #FFFFFF; font-weight: 800; font-size: 15px; padding: 14px 36px; text-decoration: none; border-radius: 8px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-                      Redeem before Dec 31
-                    </a>
+                  <td align="center" style="border-radius: 999px;" bgcolor="#FF5722">
+                    <a href="${appBaseUrl}/customer/claims"
+                       target="_blank"
+                       style="
+                         display: inline-block;
+                         background: #FF5722;
+                         color: #FFFFFF;
+                         text-decoration: none;
+                         padding: 14px 32px;
+                         border-radius: 999px;
+                         font-weight: 700;
+                         font-size: 15px;
+                         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                       ">${ctaLabel}</a>
                   </td>
                 </tr>
               </table>
 
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="padding: 24px 32px; background-color: #FAF8F5; border-top: 1px solid #F3F4F6;">
-              <p style="margin: 0; font-size: 11px; color: #9CA3AF; line-height: 1.5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-                You're getting this because you have active coupons at restaurants you visited on QriousQR. If you no longer want reminders, reply to this email and we'll take you off.
+              <p style="
+                margin: 24px 0 0 0;
+                font-size: 13px;
+                color: #666666;
+                line-height: 1.6;
+                text-align: center;
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+              ">
+                ${postCtaText}
               </p>
             </td>
           </tr>
-
+          <tr>
+            <td>
+              <!-- FOOTER -->
+              <div style="
+                margin-top: 40px;
+                padding-top: 24px;
+                border-top: 1px solid #EBEBEB;
+                text-align: center;
+                font-size: 12px;
+                color: #999;
+                line-height: 1.6;
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+              ">
+                <div style="margin-bottom: 8px;">
+                  You're getting this because you have active QriousQR coupons. Reply to this email if you'd rather not get reminders.
+                </div>
+                <div>© 2026 QriousQR. Beirut · Riyadh · Dubai.</div>
+                <div style="margin-top: 8px;">
+                  Questions? <a href="mailto:hello@qriousqr.com" style="color: #FF5722; text-decoration: none;">hello@qriousqr.com</a>
+                </div>
+              </div>
+            </td>
+          </tr>
         </table>
       </td>
     </tr>
   </table>
 </body>
-</html>
-  `;
+</html>`;
 }

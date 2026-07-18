@@ -58,6 +58,10 @@ export default function AdminCompanyDetail() {
     setReasonModal({ show: false, targetStatus: null, reason: '' });
   };
 
+  const handleOpenReasonModal = (targetStatus) => {
+    setReasonModal({ show: true, targetStatus, reason: '' });
+  };
+
   const handlePasswordReset = async () => {
     if (!company?.owner_email) {
       triggerToast("Error: No owner email available.");
