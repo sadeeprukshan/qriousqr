@@ -6,6 +6,7 @@ import { emailExists } from '../services/adminService.js';
 import { validateNewPassword } from '../lib/passwordRules.js';
 
 const COUNTRIES = [
+  // MENA (already supported)
   { code: 'LB', name: 'Lebanon', currency: 'LBP' },
   { code: 'AE', name: 'United Arab Emirates', currency: 'AED' },
   { code: 'SA', name: 'Saudi Arabia', currency: 'SAR' },
@@ -15,11 +16,37 @@ const COUNTRIES = [
   { code: 'QA', name: 'Qatar', currency: 'QAR' },
   { code: 'BH', name: 'Bahrain', currency: 'BHD' },
   { code: 'OM', name: 'Oman', currency: 'OMR' },
+  { code: 'IQ', name: 'Iraq', currency: 'IQD' },
+  { code: 'MA', name: 'Morocco', currency: 'MAD' },
+  { code: 'TN', name: 'Tunisia', currency: 'TND' },
+  { code: 'DZ', name: 'Algeria', currency: 'DZD' },
+  // South Asia
+  { code: 'LK', name: 'Sri Lanka', currency: 'LKR' },
+  { code: 'IN', name: 'India', currency: 'INR' },
+  { code: 'PK', name: 'Pakistan', currency: 'PKR' },
+  { code: 'BD', name: 'Bangladesh', currency: 'BDT' },
+  { code: 'NP', name: 'Nepal', currency: 'NPR' },
+  // Southeast Asia
+  { code: 'MY', name: 'Malaysia', currency: 'MYR' },
+  { code: 'SG', name: 'Singapore', currency: 'SGD' },
+  { code: 'ID', name: 'Indonesia', currency: 'IDR' },
+  { code: 'TH', name: 'Thailand', currency: 'THB' },
+  { code: 'PH', name: 'Philippines', currency: 'PHP' },
+  { code: 'VN', name: 'Vietnam', currency: 'VND' },
+  // Europe + others
   { code: 'US', name: 'United States', currency: 'USD' },
-  { code: 'GB', name: 'United Kingdom', currency: 'GBP' }
+  { code: 'GB', name: 'United Kingdom', currency: 'GBP' },
+  { code: 'CA', name: 'Canada', currency: 'CAD' },
+  { code: 'AU', name: 'Australia', currency: 'AUD' },
+  { code: 'DE', name: 'Germany', currency: 'EUR' },
+  { code: 'FR', name: 'France', currency: 'EUR' },
+  { code: 'IT', name: 'Italy', currency: 'EUR' },
+  { code: 'ES', name: 'Spain', currency: 'EUR' },
+  { code: 'TR', name: 'Turkey', currency: 'TRY' },
 ];
 
 const CURRENCIES = [
+  // MENA
   { code: 'AED', name: 'UAE Dirham' },
   { code: 'SAR', name: 'Saudi Riyal' },
   { code: 'LBP', name: 'Lebanese Pound' },
@@ -29,9 +56,30 @@ const CURRENCIES = [
   { code: 'QAR', name: 'Qatari Riyal' },
   { code: 'BHD', name: 'Bahraini Dinar' },
   { code: 'OMR', name: 'Omani Rial' },
+  { code: 'IQD', name: 'Iraqi Dinar' },
+  { code: 'MAD', name: 'Moroccan Dirham' },
+  { code: 'TND', name: 'Tunisian Dinar' },
+  { code: 'DZD', name: 'Algerian Dinar' },
+  { code: 'TRY', name: 'Turkish Lira' },
+  // South Asia
+  { code: 'LKR', name: 'Sri Lankan Rupee' },
+  { code: 'INR', name: 'Indian Rupee' },
+  { code: 'PKR', name: 'Pakistani Rupee' },
+  { code: 'BDT', name: 'Bangladeshi Taka' },
+  { code: 'NPR', name: 'Nepalese Rupee' },
+  // Southeast Asia
+  { code: 'MYR', name: 'Malaysian Ringgit' },
+  { code: 'SGD', name: 'Singapore Dollar' },
+  { code: 'IDR', name: 'Indonesian Rupiah' },
+  { code: 'THB', name: 'Thai Baht' },
+  { code: 'PHP', name: 'Philippine Peso' },
+  { code: 'VND', name: 'Vietnamese Dong' },
+  // Global
   { code: 'USD', name: 'US Dollar' },
   { code: 'GBP', name: 'British Pound' },
-  { code: 'EUR', name: 'Euro' }
+  { code: 'EUR', name: 'Euro' },
+  { code: 'CAD', name: 'Canadian Dollar' },
+  { code: 'AUD', name: 'Australian Dollar' },
 ];
 
 export default function AuthPage() {
@@ -79,7 +127,6 @@ export default function AuthPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [restNameEn, setRestNameEn] = useState('');
-  const [restNameAr, setRestNameAr] = useState('');
   const [slug, setSlug] = useState('');
   const [country, setCountry] = useState('US');
   const [currency, setCurrency] = useState('USD');
@@ -178,7 +225,7 @@ export default function AuthPage() {
       }
     }
     if (isRegister && !inviteToken) {
-      if (!restNameEn || !restNameAr || !slug) {
+      if (!restNameEn || !slug) {
         setErrorMsg('Please fill in all restaurant details.');
         return false;
       }
@@ -203,7 +250,7 @@ export default function AuthPage() {
         email, 
         password, 
         restNameEn: inviteToken ? '' : restNameEn, 
-        restNameAr: inviteToken ? '' : restNameAr, 
+        restNameAr: inviteToken ? '' : restNameEn, 
         slug: inviteToken ? '' : slug, 
         country: inviteToken ? '' : country, 
         currency: inviteToken ? '' : currency,
@@ -570,18 +617,6 @@ export default function AuthPage() {
                     />
                   </div>
 
-                  <div className="form-group">
-                    <label htmlFor="restNameAr">Restaurant Name (Arabic)</label>
-                    <input 
-                      id="restNameAr"
-                      type="text" 
-                      placeholder="مثال: مقهى برولاب" 
-                      dir="rtl"
-                      value={restNameAr}
-                      onChange={(e) => setRestNameAr(e.target.value)}
-                      required 
-                    />
-                  </div>
 
                   <div className="form-group">
                     <label htmlFor="slug">Menu URL Slug</label>

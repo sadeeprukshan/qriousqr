@@ -185,6 +185,15 @@ export default function PublicMenu({ slug: propSlug, branchSlug: propBranchSlug,
   }, [data?.company?.id, data?.branch?.id, lang]);
 
   useEffect(() => {
+    // Detect iframe context (landing page phone mockup). Only hide scrollbars here.
+    const isEmbedded = window.self !== window.top;
+    if (isEmbedded) {
+      document.documentElement.classList.add('menu-embedded');
+      return () => document.documentElement.classList.remove('menu-embedded');
+    }
+  }, []);
+
+  useEffect(() => {
     document.body.dir = isRtl ? 'rtl' : 'ltr';
     document.documentElement.lang = lang;
   }, [isRtl, lang]);

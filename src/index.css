@@ -24,6 +24,15 @@
   --font-ar: 'Cairo', system-ui, sans-serif;
 }
 
+html.menu-embedded {
+  scrollbar-width: none;       /* Firefox */
+  -ms-overflow-style: none;    /* IE/legacy Edge */
+}
+html.menu-embedded::-webkit-scrollbar,
+html.menu-embedded body::-webkit-scrollbar {
+  display: none;               /* Chrome, Safari, new Edge */
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body, #root { height: 100%; }
