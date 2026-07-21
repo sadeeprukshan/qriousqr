@@ -17,6 +17,7 @@ export default function InviteAccept() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [isInviteSession, setIsInviteSession] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   // Detect invite session hash on mount before SDK strips it
   useEffect(() => {
@@ -70,13 +71,17 @@ export default function InviteAccept() {
       // 2. Accept the invite (inserts company_members row, marks accepted)
       await acceptInvite(token, user.id);
 
-      // 3. Kill the invite session
-      await signOut();
+      // 3. Trigger success animated tick state
+      setSuccess(true);
+      setSubmitting(false);
 
-      // 4. Redirect to login with email + welcome context
+      // 4. Redirect after animation delay
       const email = encodeURIComponent(inviteData.invite.email);
       const company = encodeURIComponent(inviteData.companyName || 'your team');
-      navigate(`/auth?email=${email}&joined=${company}`, { replace: true });
+      setTimeout(async () => {
+        await signOut();
+        navigate(`/auth?email=${email}&joined=${company}`, { replace: true });
+      }, 2200);
     } catch (err) {
       console.error(err);
       setErrorMsg(err.message || 'Failed to set password and accept invitation.');
@@ -223,6 +228,36 @@ export default function InviteAccept() {
     );
   }
 
+  if (success) {
+    return (
+      <div className="invite-page-shell">
+        <div className="invite-card" style={{ textAlign: 'center' }}>
+          <svg
+            className="q-tick-svg"
+            viewBox="0 0 52 52"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
+          >
+            <circle className="q-tick-circle" cx="26" cy="26" r="25" fill="none" />
+            <path
+              className="q-tick-check"
+              fill="none"
+              d="M14.1 27.2l7.1 7.2 16.7-16.8"
+            />
+          </svg>
+
+          <h2 style={{ marginTop: '20px' }}>You're all set</h2>
+          <p className="invite-text-desc" style={{ marginTop: '8px' }}>
+            Your password has been set and you've joined <strong>{inviteData.companyName}</strong>.
+          </p>
+          <p style={{ fontSize: '13px', color: 'var(--text-soft, #71717a)', marginTop: '12px' }}>
+            Taking you to sign in…
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   // MAIN CASE: signed in via invite link hash, need to set password to activate the account
   return (
     <div className="invite-page-shell">
@@ -277,7 +312,7 @@ export default function InviteAccept() {
           <button
             type="submit"
             className="btn-submit-auth"
-            disabled={submitting}
+            disabled={submitting || success}
             style={{ width: '100%', marginTop: '24px' }}
           >
             {submitting ? 'Activating…' : `Set password & join ${companyName}`}

@@ -4090,3 +4090,43 @@ body[dir="rtl"] .cover-install-btn {
   color: #991B1B;
 }
 
+/* Invite success animated tick */
+.q-tick-svg {
+  width: 84px;
+  height: 84px;
+  display: block;
+  margin: 0 auto;
+  border-radius: 50%;
+  stroke-width: 3;
+  stroke-miterlimit: 10;
+  stroke: #10B981; /* Tailwind emerald-500 — matches the "success" palette from brand guidelines */
+  box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.10); /* soft glow, static */
+}
+
+.q-tick-circle {
+  stroke: #10B981;
+  stroke-dasharray: 166;
+  stroke-dashoffset: 166;
+  animation: q-tick-draw-circle 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+}
+
+.q-tick-check {
+  stroke: #10B981;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  animation: q-tick-draw-check 0.4s cubic-bezier(0.65, 0, 0.45, 1) 0.55s forwards;
+}
+
+@keyframes q-tick-draw-circle {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes q-tick-draw-check {
+  to { stroke-dashoffset: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .q-tick-circle, .q-tick-check { animation-duration: 0.01ms; }
+}

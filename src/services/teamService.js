@@ -298,46 +298,24 @@ export async function acceptInvite(token, userId) {
     throw new Error('Invite not found');
   }
 
-  // 1. Get invite details
-  const { data: invite, error: fetchErr } = await supabase
-    .from('company_invites')
-    .select('*')
-    .eq('token', token)
-    .is('accepted_at', null)
-    .single();
+  // Single RPC call — validates + inserts + marks accepted atomically as SECURITY DEFINER.
+  // The userId argument is no longer used (the RPC reads auth.uid() server-side),
+  // but keep it in the signature for backwards compat with the current call sites.
+  // eslint-disable-next-line no-unused-vars
+  const { data, error } = await supabase.rpc('accept_team_invite', { p_invite_token: token });
 
-  if (fetchErr || !invite) throw new Error('Invalid or expired invite');
-
-  // Check expiration
-  if (new Date(invite.expires_at) < new Date()) {
-    throw new Error('This invite has expired.');
+  if (error) {
+    // Normalize the most common failure messages so the UI can display them cleanly.
+    const msg = error.message || '';
+    if (msg.includes('invite not found')) throw new Error('Invitation not found. It may have been revoked.');
+    if (msg.includes('already accepted')) throw new Error('This invitation has already been accepted.');
+    if (msg.includes('expired')) throw new Error('This invitation has expired.');
+    if (msg.includes('email does not match')) throw new Error('This invite was sent to a different email. Sign in with the invited address.');
+    if (msg.includes('not authenticated')) throw new Error('Please sign in again and retry.');
+    throw error;
   }
 
-  // 2. Insert member row
-  const { error: memberErr } = await supabase
-    .from('company_members')
-    .insert({
-      company_id: invite.company_id,
-      user_id: userId,
-      role: invite.role
-    });
-
-  if (memberErr) {
-    // If user is already a member, we can proceed or throw error
-    if (memberErr.code !== '23505') { // Unique constraint violation
-      throw memberErr;
-    }
-  }
-
-  // 3. Mark invite accepted
-  const { error: inviteErr } = await supabase
-    .from('company_invites')
-    .update({ accepted_at: new Date().toISOString() })
-    .eq('id', invite.id);
-
-  if (inviteErr) throw inviteErr;
-
-  return invite.company_id;
+  return data;  // company_id (uuid)
 }
 
 export async function resendInviteEmail(inviteToken) {
