@@ -143,15 +143,26 @@ export async function createInvite(companyId, email, role, invitedBy) {
     if (!resp.ok) {
       const errBody = await resp.text().catch(() => '');
       console.error('send-team-invite failed', resp.status, errBody);
-      // Return the row with a flag so the UI can warn
-      return { ...data, __email_send_failed: true };
+      return { ...data, __email_outcome: 'failed', __invite_url: buildInviteUrl(data.token) };
     }
+
+    const respJson = await resp.json();
+    if (respJson.outcome === 'manual_share_required') {
+      return {
+        ...data,
+        __email_outcome: 'manual_share_required',
+        __invite_url: respJson.invite_url || buildInviteUrl(data.token),
+      };
+    }
+    return { ...data, __email_outcome: 'sent' };
   } catch (mailErr) {
     console.error('send-team-invite threw', mailErr);
-    return { ...data, __email_send_failed: true };
+    return { ...data, __email_outcome: 'failed', __invite_url: buildInviteUrl(data.token) };
   }
+}
 
-  return data;
+function buildInviteUrl(token) {
+  return `${window.location.origin}/invite/${token}`;
 }
 
 export async function revokeInvite(companyId, inviteId) {
@@ -331,7 +342,7 @@ export async function acceptInvite(token, userId) {
 
 export async function resendInviteEmail(inviteToken) {
   if (isMockMode) {
-    return true;
+    return { outcome: 'sent' };
   }
 
   const { data: sessionData } = await supabase.auth.getSession();
@@ -339,17 +350,30 @@ export async function resendInviteEmail(inviteToken) {
   if (!jwt) throw new Error('Not authenticated');
 
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const resp = await fetch(`${supabaseUrl}/functions/v1/send-team-invite`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${jwt}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ invite_token: inviteToken }),
-  });
-  if (!resp.ok) {
-    const body = await resp.text().catch(() => '');
-    throw new Error(body || 'Failed to resend invite email.');
+  try {
+    const resp = await fetch(`${supabaseUrl}/functions/v1/send-team-invite`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${jwt}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ invite_token: inviteToken }),
+    });
+    if (!resp.ok) {
+      const body = await resp.text().catch(() => '');
+      console.error('resendInviteEmail failed', resp.status, body);
+      return { outcome: 'failed', invite_url: buildInviteUrl(inviteToken) };
+    }
+    const respJson = await resp.json();
+    if (respJson.outcome === 'manual_share_required') {
+      return {
+        outcome: 'manual_share_required',
+        invite_url: respJson.invite_url || buildInviteUrl(inviteToken)
+      };
+    }
+    return { outcome: 'sent' };
+  } catch (err) {
+    console.error('resendInviteEmail threw', err);
+    return { outcome: 'failed', invite_url: buildInviteUrl(inviteToken) };
   }
-  return true;
 }

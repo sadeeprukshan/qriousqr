@@ -1177,10 +1177,12 @@ export default function Dashboard() {
       setGeneratedInviteLink(inviteLink);
       
       setInviteEmail('');
-      if (newInv.__email_send_failed) {
+      if (newInv.__email_outcome === 'manual_share_required') {
+        showAlert('info', `${cleanEmail} already has a QriousQR account. Share this invite link with them.`);
+      } else if (newInv.__email_outcome === 'failed') {
         showAlert('warning', "Invite created, but the email couldn't be sent. Share the link manually.");
       } else {
-        showAlert('success', `Invite sent to ${cleanEmail}.`);
+        showAlert('success', `Invite email sent to ${cleanEmail}.`);
       }
     } catch (err) {
       console.error(err);
@@ -1206,8 +1208,14 @@ export default function Dashboard() {
   const handleResendInvite = async (inviteToken) => {
     if (isStaff) return;
     try {
-      await resendInviteEmail(inviteToken);
-      showAlert('success', 'Invite email resent.');
+      const result = await resendInviteEmail(inviteToken);
+      if (result.outcome === 'sent') {
+        showAlert('success', 'Invite email resent.');
+      } else if (result.outcome === 'manual_share_required') {
+        showAlert('info', 'User already has an account. Share the link manually: ' + (result.invite_url || ''));
+      } else {
+        showAlert('warning', 'Failed to send email. Share the link manually: ' + (result.invite_url || ''));
+      }
     } catch (err) {
       console.error(err);
       showAlert('error', err.message || 'Failed to resend invite email.');

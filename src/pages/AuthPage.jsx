@@ -97,6 +97,14 @@ export default function AuthPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [isEmailConfirmSent, setIsEmailConfirmSent] = useState(false);
+  const [joinedCompany, setJoinedCompany] = useState('');
+
+  useEffect(() => {
+    const joined = searchParams.get('joined');
+    if (joined) {
+      setJoinedCompany(decodeURIComponent(joined));
+    }
+  }, [searchParams]);
   
   useEffect(() => {
     const mode = searchParams.get('mode');
@@ -515,6 +523,21 @@ export default function AuthPage() {
 
             {errorMsg && <div className="auth-alert error">{errorMsg}</div>}
             {successMsg && <div className="auth-alert success">{successMsg}</div>}
+
+            {joinedCompany && (
+              <div className="auth-success-banner" style={{
+                background: '#ECFDF5',
+                border: '1px solid #A7F3D0',
+                color: '#065F46',
+                padding: '12px 16px',
+                borderRadius: '8px',
+                marginBottom: '16px',
+                fontSize: '13px',
+                textAlign: 'left'
+              }}>
+                ✓ Password set. Sign in below to enter <strong>{joinedCompany}</strong>.
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="auth-form">
               <div className="form-group">
