@@ -146,20 +146,23 @@ export default function InviteAccept() {
             <p className="invite-auth-label">
               Please authenticate with <strong>{invite.email}</strong> to accept this invitation:
             </p>
+            <p style={{ fontSize: '13px', color: 'var(--text-soft)', marginBottom: '16px', textAlign: 'center' }}>
+              New to QriousQR? Create an account to join. Already have an account? Sign in with the same email.
+            </p>
             <div className="invite-auth-buttons">
               <Link 
-                to={`/auth?mode=login&email=${encodeURIComponent(invite.email)}&invite=${token}`} 
+                to={`/auth?mode=register&email=${encodeURIComponent(invite.email)}&invite=${token}`} 
                 className="btn-submit-auth invite-btn"
                 style={{ textAlign: 'center', display: 'block', textDecoration: 'none' }}
               >
-                Sign In
+                Create Account
               </Link>
               <Link 
-                to={`/auth?mode=register&email=${encodeURIComponent(invite.email)}&invite=${token}`} 
+                to={`/auth?mode=login&email=${encodeURIComponent(invite.email)}&invite=${token}`} 
                 className="btn-save-profile invite-btn"
                 style={{ textAlign: 'center', display: 'block', textDecoration: 'none' }}
               >
-                Create Account
+                Sign In
               </Link>
             </div>
           </div>

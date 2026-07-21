@@ -28,7 +28,8 @@ import {
   createInvite,
   revokeInvite,
   removeMember,
-  updateMemberRole
+  updateMemberRole,
+  resendInviteEmail
 } from '../services/teamService.js';
 import QrTab from './dashboard/QrTab.jsx';
 import OperatorConsoleTab from './dashboard/OperatorConsoleTab.jsx';
@@ -1176,7 +1177,11 @@ export default function Dashboard() {
       setGeneratedInviteLink(inviteLink);
       
       setInviteEmail('');
-      showAlert('success', 'Invite created successfully.');
+      if (newInv.__email_send_failed) {
+        showAlert('warning', "Invite created, but the email couldn't be sent. Share the link manually.");
+      } else {
+        showAlert('success', `Invite sent to ${cleanEmail}.`);
+      }
     } catch (err) {
       console.error(err);
       showAlert('error', err.message || 'Failed to create invite.');
@@ -1195,6 +1200,17 @@ export default function Dashboard() {
     } catch (err) {
       console.error(err);
       showAlert('error', 'Failed to revoke invite.');
+    }
+  };
+
+  const handleResendInvite = async (inviteToken) => {
+    if (isStaff) return;
+    try {
+      await resendInviteEmail(inviteToken);
+      showAlert('success', 'Invite email resent.');
+    } catch (err) {
+      console.error(err);
+      showAlert('error', err.message || 'Failed to resend invite email.');
     }
   };
 
@@ -2740,6 +2756,9 @@ export default function Dashboard() {
                               {!isLocked && (
                                 <td>
                                   <div className="pending-actions-group">
+                                    <button className="btn-edit-text" onClick={() => handleResendInvite(inv.token)} style={{ marginRight: '8px' }}>
+                                      Resend Email
+                                    </button>
                                     <button className="btn-edit-text" onClick={() => {
                                       navigator.clipboard.writeText(inviteLink);
                                       showAlert('success', 'Invite link copied!');

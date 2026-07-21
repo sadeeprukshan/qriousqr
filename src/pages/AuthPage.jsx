@@ -811,7 +811,8 @@ export default function AuthPage() {
                   setIsEmailLocked(true);
                   setErrorMsg('');
                   setSuccessMsg('');
-                  navigate(`/auth?mode=register&email=${encodeURIComponent(email)}`, { replace: true });
+                  const inviteQuery = inviteToken ? `&invite=${encodeURIComponent(inviteToken)}` : '';
+                  navigate(`/auth?mode=register&email=${encodeURIComponent(email)}${inviteQuery}`, { replace: true });
                 }}
                 style={{
                   padding: '10px 20px',

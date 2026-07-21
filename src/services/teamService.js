@@ -103,10 +103,7 @@ export async function createInvite(companyId, email, role, invitedBy) {
     return newInvite;
   }
 
-  // Check if already a member first (Supabase query)
-  // Since we can't query auth.users by email easily, we'll try to insert the invite,
-  // which has a unique constraint on (company_id, email) and will fail if they are already invited.
-  // RLS/Postgres unique constraint checks:
+  // 1. Insert invite row (existing)
   const { data, error } = await supabase
     .from('company_invites')
     .insert({
@@ -126,6 +123,34 @@ export async function createInvite(companyId, email, role, invitedBy) {
     }
     throw error;
   }
+
+  // 2. Fire the email via edge function
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const jwt = sessionData?.session?.access_token;
+    if (!jwt) throw new Error('Not authenticated');
+
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const resp = await fetch(`${supabaseUrl}/functions/v1/send-team-invite`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${jwt}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ invite_token: data.token }),
+    });
+
+    if (!resp.ok) {
+      const errBody = await resp.text().catch(() => '');
+      console.error('send-team-invite failed', resp.status, errBody);
+      // Return the row with a flag so the UI can warn
+      return { ...data, __email_send_failed: true };
+    }
+  } catch (mailErr) {
+    console.error('send-team-invite threw', mailErr);
+    return { ...data, __email_send_failed: true };
+  }
+
   return data;
 }
 
@@ -302,4 +327,29 @@ export async function acceptInvite(token, userId) {
   if (inviteErr) throw inviteErr;
 
   return invite.company_id;
+}
+
+export async function resendInviteEmail(inviteToken) {
+  if (isMockMode) {
+    return true;
+  }
+
+  const { data: sessionData } = await supabase.auth.getSession();
+  const jwt = sessionData?.session?.access_token;
+  if (!jwt) throw new Error('Not authenticated');
+
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const resp = await fetch(`${supabaseUrl}/functions/v1/send-team-invite`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${jwt}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ invite_token: inviteToken }),
+  });
+  if (!resp.ok) {
+    const body = await resp.text().catch(() => '');
+    throw new Error(body || 'Failed to resend invite email.');
+  }
+  return true;
 }
