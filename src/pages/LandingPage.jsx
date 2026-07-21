@@ -73,23 +73,8 @@ export default function LandingPage() {
             </p>
             <div className="hero-ctas">
               <Link to="/auth?mode=register" className="btn-hero-primary">Create Your Menu</Link>
+              <Link to="/contact" className="get-quote-btn">Get a Quote</Link>
               <Link to="/menu/kantami" className="btn-hero-secondary">View Live Demo</Link>
-            </div>
-            <div style={{ marginTop: '16px' }}>
-              <Link 
-                to="/contact" 
-                style={{ 
-                  color: 'var(--text-soft)', 
-                  textDecoration: 'none', 
-                  fontSize: '14px', 
-                  fontWeight: '600',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}
-              >
-                Have questions? Get a quote <span style={{ color: 'var(--primary-color)' }}>→</span>
-              </Link>
             </div>
           </div>
 
