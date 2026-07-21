@@ -441,7 +441,7 @@ export default function AdminUsers() {
 
                 return (
                   <React.Fragment key={userRow.id}>
-                    <tr>
+                    <tr className={userRow.is_super_admin ? 'is-super-admin' : ''}>
                       {/* User Avatar + Email */}
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
