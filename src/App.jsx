@@ -15,6 +15,7 @@ import SuspendedPage from './pages/SuspendedPage.jsx';
 import TermsPage from './pages/legal/TermsPage.jsx';
 import PrivacyPage from './pages/legal/PrivacyPage.jsx';
 import RootErrorBoundary from './components/RootErrorBoundary.jsx';
+import ContactPage from './pages/ContactPage.jsx';
 
 // Admin Page Imports
 import AdminLogin from './pages/admin/AdminLogin.jsx';
@@ -32,6 +33,7 @@ import CustomerLayout from './pages/CustomerLayout.jsx';
 import CustomerClaims from './pages/CustomerClaims.jsx';
 import CustomerProfile from './pages/CustomerProfile.jsx';
 import AdminClaims from './pages/admin/AdminClaims.jsx';
+import AdminMessages from './pages/admin/AdminMessages.jsx';
 
 function ProtectedRoute({ children }) {
   const { user, isSuperAdmin, isCustomer, loading, currentCompany } = useAuth();
@@ -189,6 +191,7 @@ export default function App() {
       <RootErrorBoundary>
         <Routes>
           <Route path="/" element={<LandingPage />} />
+          <Route path="/contact" element={<ContactPage />} />
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/auth/set-password" element={<SetPasswordPage />} />
           <Route path="/pending-approval" element={<PendingApprovalPage />} />
@@ -210,6 +213,7 @@ export default function App() {
             <Route index element={<AdminCompanies />} />
             <Route path="companies/:companyId" element={<AdminCompanyDetail />} />
             <Route path="users" element={<AdminUsers />} />
+            <Route path="messages" element={<AdminMessages />} />
             <Route path="customers" element={<AdminCustomers />} />
             <Route path="claims" element={<AdminClaims />} />
             <Route path="reports" element={<AdminReports />} />

@@ -48,6 +48,12 @@ export default function LandingPage() {
             >
               Join as Customer
             </Link>
+            <Link
+              to="/contact"
+              style={{ fontSize: '13px', color: 'var(--text-soft)', marginRight: '16px', textDecoration: 'none', fontWeight: '500' }}
+            >
+              Get a Quote
+            </Link>
             <Link to="/auth" className="btn-link">Sign In</Link>
             <Link to="/auth?mode=register" className="btn-primary-landing">Get Started Free</Link>
           </div>
@@ -68,6 +74,22 @@ export default function LandingPage() {
             <div className="hero-ctas">
               <Link to="/auth?mode=register" className="btn-hero-primary">Create Your Menu</Link>
               <Link to="/menu/kantami" className="btn-hero-secondary">View Live Demo</Link>
+            </div>
+            <div style={{ marginTop: '16px' }}>
+              <Link 
+                to="/contact" 
+                style={{ 
+                  color: 'var(--text-soft)', 
+                  textDecoration: 'none', 
+                  fontSize: '14px', 
+                  fontWeight: '600',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                Have questions? Get a quote <span style={{ color: 'var(--primary-color)' }}>→</span>
+              </Link>
             </div>
           </div>
 
@@ -214,6 +236,7 @@ export default function LandingPage() {
         <div style={{ marginBottom: '8px' }}>
           <Link to="/auth" style={{ color: 'inherit', textDecoration: 'none', margin: '0 12px', fontWeight: '600' }}>Owner Login</Link>
           <Link to="/menu/kantami" style={{ color: 'inherit', textDecoration: 'none', margin: '0 12px', fontWeight: '600' }}>Demo Menu</Link>
+          <Link to="/contact" style={{ color: 'inherit', textDecoration: 'none', margin: '0 12px', fontWeight: '600' }}>Get a Quote</Link>
           <Link to="/legal/terms" style={{ color: 'inherit', textDecoration: 'underline', margin: '0 12px' }}>Terms</Link>
           <Link to="/legal/privacy" style={{ color: 'inherit', textDecoration: 'underline', margin: '0 12px' }}>Privacy</Link>
         </div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import ChangePasswordForm from '../../components/ChangePasswordForm.jsx';
+import { supabase } from '../../supabaseClient.js';
 
 export default function AdminLayout() {
   const { user, signOut } = useAuth();
@@ -9,6 +10,66 @@ export default function AdminLayout() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [changePasswordModalOpen, setChangePasswordModalOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [adminToast, setAdminToast] = useState({ show: false, message: '', link: '' });
+
+  const showAdminToast = (message) => {
+    setAdminToast({ show: true, message, link: '/admin/messages' });
+    // Clear toast after 6 seconds
+    setTimeout(() => {
+      setAdminToast(prev => {
+        if (prev.message === message) {
+          return { show: false, message: '', link: '' };
+        }
+        return prev;
+      });
+    }, 6000);
+  };
+
+  // Fetch initial unread count
+  useEffect(() => {
+    async function fetchUnreadCount() {
+      try {
+        const { data, error } = await supabase.rpc('contact_messages_unread_count');
+        if (error) throw error;
+        setUnreadCount(data ?? 0);
+      } catch (err) {
+        console.error('Error fetching unread messages count:', err);
+      }
+    }
+    fetchUnreadCount();
+  }, []);
+
+  // Subscribe to realtime contact_messages changes
+  useEffect(() => {
+    const channel = supabase
+      .channel('admin_contact_messages_layout')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'contact_messages' },
+        async (payload) => {
+          // Re-fetch unread count on any change to stay synced
+          try {
+            const { data, error } = await supabase.rpc('contact_messages_unread_count');
+            if (!error) {
+              setUnreadCount(data ?? 0);
+            }
+          } catch (err) {
+            console.error(err);
+          }
+
+          // Trigger toast on new inserts
+          if (payload.eventType === 'INSERT') {
+            showAdminToast(`New quote request from ${payload.new.name}`);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   useEffect(() => {
     if (!changePasswordModalOpen) return;
@@ -31,6 +92,7 @@ export default function AdminLayout() {
     if (path === '/admin') return 'Companies';
     if (path.startsWith('/admin/companies/')) return 'Companies / Details';
     if (path === '/admin/users') return 'Users';
+    if (path === '/admin/messages') return 'Messages';
     if (path === '/admin/customers') return 'Customers';
     if (path === '/admin/claims') return 'Claims';
     if (path === '/admin/reports') return 'Reports';
@@ -154,6 +216,45 @@ export default function AdminLayout() {
               <path d="M16 3.13a4 4 0 0 1 0 7.75" />
             </svg>
             Users
+          </Link>
+
+          <Link
+            to="/admin/messages"
+            onClick={() => setMobileMenuOpen(false)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              padding: '12px 16px',
+              borderRadius: '8px',
+              color: '#FFFFFF',
+              textDecoration: 'none',
+              fontWeight: '600',
+              fontSize: '14px',
+              backgroundColor: location.pathname === '/admin/messages' ? 'rgba(255,255,255,0.06)' : 'transparent',
+              transition: 'background 0.2s',
+              justifyContent: 'space-between'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <svg style={{ marginRight: '12px' }} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                <polyline points="22,6 12,13 2,6" />
+              </svg>
+              Messages
+            </div>
+            {unreadCount > 0 && (
+              <span style={{
+                backgroundColor: 'var(--primary-color)',
+                color: '#FFFFFF',
+                fontSize: '11px',
+                fontWeight: '800',
+                padding: '2px 8px',
+                borderRadius: '999px',
+                lineHeight: 1
+              }}>
+                {unreadCount}
+              </span>
+            )}
           </Link>
 
           <Link
@@ -402,6 +503,55 @@ export default function AdminLayout() {
             {/* Body */}
             <ChangePasswordForm lang="en" onSuccess={() => setChangePasswordModalOpen(false)} />
           </div>
+        </div>
+      )}
+      {/* Realtime Toast Notification */}
+      {adminToast.show && (
+        <div 
+          onClick={() => {
+            setAdminToast({ show: false, message: '', link: '' });
+            navigate(adminToast.link);
+          }}
+          style={{
+            position: 'fixed',
+            top: '24px',
+            right: '24px',
+            backgroundColor: '#1E1B18',
+            color: '#FFFFFF',
+            borderLeft: '4px solid #FF5722',
+            padding: '16px 20px',
+            borderRadius: '8px',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.15)',
+            zIndex: 11000,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            animation: 'admin-toast-slide-in 0.25s ease-out'
+          }}
+        >
+          <span style={{ fontSize: '20px' }}>📬</span>
+          <div>
+            <div style={{ fontSize: '13px', fontWeight: '800', color: '#FFFFFF' }}>New Message</div>
+            <div style={{ fontSize: '12px', color: '#e4e2e0', marginTop: '2px' }}>{adminToast.message}</div>
+          </div>
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              setAdminToast({ show: false, message: '', link: '' });
+            }}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#a09e9c',
+              fontSize: '18px',
+              cursor: 'pointer',
+              marginLeft: '12px',
+              lineHeight: 1
+            }}
+          >
+            ×
+          </button>
         </div>
       )}
     </div>
