@@ -38,6 +38,7 @@ import LineChart from '../components/LineChart.jsx';
 import BarChart from '../components/BarChart.jsx';
 import { useInstallPrompt } from '../hooks/useInstallPrompt.js';
 import ChangePasswordForm from '../components/ChangePasswordForm.jsx';
+import QSuccessToast from '../components/QSuccessToast.jsx';
 
 const PROFILE_CURRENCIES = [
   { code: 'USD', symbol: '$', name: 'US Dollar' },
@@ -193,6 +194,7 @@ export default function Dashboard() {
   const [productImageUploading, setProductImageUploading] = useState(false);
 
   const [alert, setAlert] = useState({ type: '', message: '' });
+  const [successToast, setSuccessToast] = useState({ message: '', visible: false });
   
   // Tab: Profile Form States
   const [profileForm, setProfileForm] = useState({
@@ -457,6 +459,10 @@ export default function Dashboard() {
   }
 
   const showAlert = (type, message) => {
+    if (type === 'success') {
+      setSuccessToast({ message, visible: true });
+      return;
+    }
     setAlert({ type, message });
     setTimeout(() => setAlert({ type: '', message: '' }), 4500);
   };
@@ -1441,6 +1447,12 @@ export default function Dashboard() {
             {alert.message}
           </div>
         )}
+
+        <QSuccessToast
+          message={successToast.message}
+          visible={successToast.visible}
+          onDismiss={() => setSuccessToast({ message: '', visible: false })}
+        />
 
 
 

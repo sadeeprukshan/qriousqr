@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { adminListUsers, adminToggleSuperAdmin, adminDeleteUser, adminResetOwnerPassword } from '../../services/adminService.js';
+import QSuccessToast from '../../components/QSuccessToast.jsx';
 
 function RowActionMenu({ triggerRef, open, onClose, children }) {
   const menuRef = useRef(null);
@@ -156,12 +157,7 @@ export default function AdminUsers() {
     loadData();
   }, []);
 
-  // Toast auto-hide
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(''), 3000);
-    return () => clearTimeout(t);
-  }, [toast]);
+
 
   // Compute counts
   const counts = useMemo(() => {
@@ -267,24 +263,12 @@ export default function AdminUsers() {
 
   return (
     <div style={{ paddingBottom: '80px' }}>
-      {toast && (
-        <div style={{
-          position: 'fixed',
-          bottom: '24px',
-          right: '24px',
-          background: '#1E1B18',
-          color: '#FFFFFF',
-          padding: '12px 24px',
-          borderRadius: '8px',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-          zIndex: 1000,
-          fontWeight: '600',
-          fontSize: '13px',
-          animation: 'fadeIn 0.2s'
-        }}>
-          {toast}
-        </div>
-      )}
+      {/* Toast Alert */}
+      <QSuccessToast
+        message={toast}
+        visible={toast !== ''}
+        onDismiss={() => setToast('')}
+      />
 
       {/* Header section */}
       <div style={{

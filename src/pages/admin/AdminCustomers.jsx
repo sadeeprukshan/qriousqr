@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useLayoutEffect } from 're
 import { createPortal } from 'react-dom';
 import { adminListCustomers, adminDeleteCustomer } from '../../services/adminService.js';
 import { COUNTRIES } from '../../lib/countries.js';
+import QSuccessToast from '../../components/QSuccessToast.jsx';
 
 function RowActionMenu({ triggerRef, open, onClose, children }) {
   const menuRef = useRef(null);
@@ -166,13 +167,7 @@ export default function AdminCustomers() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Toast auto-hide
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(''), 3000);
-    return () => clearTimeout(t);
-  }, [toast]);
-
+  // triggerToast helper
   const triggerToast = (msg) => {
     setToast(msg);
   };
@@ -229,24 +224,12 @@ export default function AdminCustomers() {
 
   return (
     <div style={{ paddingBottom: '80px', fontFamily: 'var(--font-en)' }}>
-      {toast && (
-        <div style={{
-          position: 'fixed',
-          bottom: '24px',
-          right: '24px',
-          background: '#1E1B18',
-          color: '#FFFFFF',
-          padding: '12px 24px',
-          borderRadius: '8px',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-          zIndex: 1000,
-          fontWeight: '600',
-          fontSize: '13px',
-          animation: 'fadeIn 0.2s'
-        }}>
-          {toast}
-        </div>
-      )}
+      {/* Toast Alert */}
+      <QSuccessToast
+        message={toast}
+        visible={toast !== ''}
+        onDismiss={() => setToast('')}
+      />
 
       {/* Header section */}
       <div style={{

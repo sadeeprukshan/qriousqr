@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useLayoutEffect } from 're
 import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { adminListCompanies, adminChangeCompanyStatus, adminResetOwnerPassword } from '../../services/adminService.js';
+import QSuccessToast from '../../components/QSuccessToast.jsx';
 
 // Helper to resolve flag emojis from country codes
 function getCountryFlag(code) {
@@ -171,7 +172,6 @@ export default function AdminCompanies() {
 
   const triggerToast = (msg) => {
     setToast(msg);
-    setTimeout(() => setToast(''), 3000);
   };
 
   // Compute counts from loaded rows
@@ -258,24 +258,11 @@ export default function AdminCompanies() {
   return (
     <div style={{ position: 'relative' }}>
       {/* Toast Alert */}
-      {toast && (
-        <div style={{
-          position: 'fixed',
-          bottom: '24px',
-          right: '24px',
-          background: '#1E1B18',
-          color: '#FFFFFF',
-          padding: '14px 24px',
-          borderRadius: '8px',
-          boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
-          zIndex: 9999,
-          fontSize: '14px',
-          fontWeight: '600',
-          borderLeft: '4px solid var(--primary-color)'
-        }}>
-          {toast}
-        </div>
-      )}
+      <QSuccessToast
+        message={toast}
+        visible={toast !== ''}
+        onDismiss={() => setToast('')}
+      />
 
       {/* Header controls row */}
       <div style={{

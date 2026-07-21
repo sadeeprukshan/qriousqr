@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { adminListCompanies, adminChangeCompanyStatus, adminResetOwnerPassword } from '../../services/adminService.js';
+import QSuccessToast from '../../components/QSuccessToast.jsx';
 
 export default function AdminCompanyDetail() {
   const { companyId } = useParams();
@@ -37,7 +38,6 @@ export default function AdminCompanyDetail() {
 
   const triggerToast = (msg) => {
     setToast(msg);
-    setTimeout(() => setToast(''), 3000);
   };
 
   const handleStatusChange = async (newStatus, reason = null) => {
@@ -107,24 +107,11 @@ export default function AdminCompanyDetail() {
   return (
     <div style={{ maxWidth: '1000px', margin: '0 auto', position: 'relative' }}>
       {/* Toast Alert */}
-      {toast && (
-        <div style={{
-          position: 'fixed',
-          bottom: '24px',
-          right: '24px',
-          background: '#1E1B18',
-          color: '#FFFFFF',
-          padding: '14px 24px',
-          borderRadius: '8px',
-          boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
-          zIndex: 9999,
-          fontSize: '14px',
-          fontWeight: '600',
-          borderLeft: '4px solid var(--primary-color)'
-        }}>
-          {toast}
-        </div>
-      )}
+      <QSuccessToast
+        message={toast}
+        visible={toast !== ''}
+        onDismiss={() => setToast('')}
+      />
 
       {/* Back to List */}
       <button
