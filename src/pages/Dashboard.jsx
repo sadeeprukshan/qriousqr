@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useNavigate } from 'react-router-dom';
+import { isMockMode } from '../supabaseClient.js';
 import {
   getCompany,
   updateCompany,
