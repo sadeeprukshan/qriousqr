@@ -126,10 +126,15 @@ export default function PublicMenu({ slug: propSlug, branchSlug: propBranchSlug,
       return next;
     });
   };
-  const sectionRefs = useRef({});
+  const [activeCat, setActiveCat] = useState(null);
+  const sectionRefs = useRef(new Map());
+  const registerSectionRef = (key, el) => {
+    if (el) sectionRefs.current.set(key, el);
+    else sectionRefs.current.delete(key);
+  };
   const chipRefs = useRef({});
   const catScrollRef = useRef(null);
-  const isScrollingRef = useRef(false);
+  const scrollLockUntilRef = useRef(0);
   const isRtl = lang === 'ar';
   const t = T[lang];
 
@@ -259,116 +264,91 @@ export default function PublicMenu({ slug: propSlug, branchSlug: propBranchSlug,
     })).filter(g => g.items.length > 0);
   }, [data]);
 
-  const urlCat = searchParams.get('cat');
-  const activeCat = useMemo(() => {
-    if (!grouped.length) return null;
-    const exists = grouped.some(g => g.cat.id === urlCat);
-    return exists ? urlCat : grouped[0].cat.id;
-  }, [grouped, urlCat]);
+  // Sync initial category or default when data is loaded
+  useEffect(() => {
+    if (grouped.length > 0 && !activeCat) {
+      const urlCat = searchParams.get('cat');
+      const exists = grouped.some(g => g.cat.id === urlCat);
+      setActiveCat(exists ? urlCat : grouped[0].cat.id);
+    }
+  }, [grouped, activeCat, searchParams]);
 
-  const setActiveCat = (catId) => {
-    setSearchParams(prev => {
-      const next = new URLSearchParams(prev);
-      if (catId) {
-        next.set('cat', catId);
-      } else {
-        next.delete('cat');
-      }
-      return next;
-    }, { replace: true });
-  };
-
-  // Position-based scroll spy tracker
-  const tickingRef = useRef(false);
-
+  // IntersectionObserver scrollspy
   useEffect(() => {
     if (!grouped.length) return;
 
-    function pickActive() {
-      if (isScrollingRef.current) return; // suppress during programmatic scroll from chip tap
-      const bar = document.querySelector('.cat-bar');
-      const stickyOffset = (bar?.getBoundingClientRect().bottom ?? 120) + 8;
+    const stripEl = document.querySelector('.cat-bar');
+    const stripH = stripEl?.getBoundingClientRect().height ?? 64;
 
-      // Pick the last section whose top edge has crossed the sticky bar's bottom.
-      // If none has crossed yet (user is above the first section), keep the first.
-      let candidateId = grouped[0].cat.id;
-      for (const { cat } of grouped) {
-        const el = sectionRefs.current[cat.id];
-        if (!el) continue;
-        const top = el.getBoundingClientRect().top;
-        if (top - stickyOffset <= 0) candidateId = cat.id;
-        else break;
-      }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (Date.now() < scrollLockUntilRef.current) return;
 
-      // Bottom-of-page override: if the page is scrolled to (near) the bottom,
-      // force the last section active, since its top may still be above the sticky bar
-      // but nothing else is coming.
-      const nearBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
-      if (nearBottom) candidateId = grouped[grouped.length - 1].cat.id;
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .map((e) => ({
+            key: e.target.getAttribute('data-category'),
+            top: e.boundingClientRect.top,
+          }))
+          .sort((a, b) => Math.abs(a.top - stripH) - Math.abs(b.top - stripH));
 
-      setActiveCat(prev => {
-        if (prev === candidateId) return prev;
-        const chipEl = chipRefs.current[candidateId];
-        if (chipEl) {
-          chipEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        if (visible.length > 0) {
+          const nextKey = visible[0].key;
+          setActiveCat((prev) => (prev === nextKey ? prev : nextKey));
+
+          setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            if (next.get('cat') !== nextKey) {
+              next.set('cat', nextKey);
+              return next;
+            }
+            return prev;
+          }, { replace: true });
         }
-        return candidateId;
-      });
-    }
+      },
+      {
+        rootMargin: `-${stripH + 8}px 0px -55% 0px`,
+        threshold: [0, 0.25, 0.5, 0.75, 1],
+      }
+    );
 
-    function onScroll() {
-      if (tickingRef.current) return;
-      tickingRef.current = true;
-      requestAnimationFrame(() => {
-        pickActive();
-        tickingRef.current = false;
-      });
-    }
-
-    pickActive(); // initial
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll);
-    return () => {
-      window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onScroll);
-    };
-  }, [grouped]);
+    sectionRefs.current.forEach((el) => el && observer.observe(el));
+    return () => observer.disconnect();
+  }, [grouped.length]);
 
   // Center horizontal category tab chip when activeCat changes
   useEffect(() => {
-    if (!catScrollRef.current) return;
-    const active = catScrollRef.current.querySelector('[data-active="true"]');
-    if (active) {
-      active.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'auto' });
-    }
+    const strip = document.querySelector('.cat-bar');
+    if (!strip) return;
+    const activePill = strip.querySelector('[data-active="true"]');
+    if (!activePill) return;
+    activePill.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
   }, [activeCat]);
 
   // Restore scroll position on mount / data load
   useEffect(() => {
     if (data && grouped.length > 0) {
+      scrollLockUntilRef.current = Date.now() + 500;
       restoreMenuScroll(slug);
     }
   }, [data, grouped.length, slug]);
 
   function scrollToCat(catId) {
-    isScrollingRef.current = true;
+    scrollLockUntilRef.current = Date.now() + 700;
     setActiveCat(catId);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('cat', catId);
+      return next;
+    }, { replace: true });
 
-    const chipEl = chipRefs.current[catId];
-    if (chipEl) {
-      chipEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-    }
-
-    const el = sectionRefs.current[catId];
+    const el = sectionRefs.current.get(catId);
     if (el) {
-      const top = el.getBoundingClientRect().top + window.scrollY - 130;
+      const stripEl = document.querySelector('.cat-bar');
+      const stripH = stripEl?.getBoundingClientRect().height ?? 64;
+      const top = el.getBoundingClientRect().top + window.scrollY - stripH - 8;
       window.scrollTo({ top, behavior: 'smooth' });
     }
-
-    // Release observer lock after scroll finishes
-    setTimeout(() => {
-      isScrollingRef.current = false;
-    }, 600);
   }
 
   const handleProductClick = (cId, pId) => {
@@ -629,9 +609,10 @@ export default function PublicMenu({ slug: propSlug, branchSlug: propBranchSlug,
         {grouped.map(({ cat, items }, catIdx) => (
           <section
             key={cat.id}
+            id={`cat-${cat.id}`}
+            data-category={cat.id}
+            ref={(el) => registerSectionRef(cat.id, el)}
             className="section"
-            data-cat-id={cat.id}
-            ref={el => (sectionRefs.current[cat.id] = el)}
           >
             <h2 className="section-title">{isRtl ? cat.name_ar : cat.name_en}</h2>
             {items.map((p, pIdx) => {
