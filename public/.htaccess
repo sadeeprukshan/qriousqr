@@ -1,23 +1,57 @@
+# ============================================
+# QriousQR — Hostinger .htaccess
+# SPA fallback + long-cache immutable assets + gzip/brotli
+# ============================================
+
+# --- 1. SPA fallback (do NOT change — Phase 20 fix) ---
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
-
-  # Don't rewrite for real files or directories
-  RewriteCond %{REQUEST_FILENAME} -f [OR]
-  RewriteCond %{REQUEST_FILENAME} -d
-  RewriteRule ^ - [L]
-
-  # Everything else → index.html so React Router can handle it
-  RewriteRule ^ index.html [L]
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [L]
 </IfModule>
 
-<IfModule mod_headers.c>
-  <FilesMatch "\.(js|css|woff2|woff|ttf|png|jpg|jpeg|svg|webp|ico)$">
+# --- 2. Compression (brotli preferred, gzip fallback) ---
+<IfModule mod_brotli.c>
+  AddOutputFilterByType BROTLI_COMPRESS text/html text/css text/javascript application/javascript application/json application/xml image/svg+xml
+</IfModule>
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css text/javascript application/javascript application/json application/xml image/svg+xml
+</IfModule>
+
+# --- 3. Long-cache immutable hashed assets (Vite output is content-hashed) ---
+<IfModule mod_expires.c>
+  ExpiresActive On
+
+  # HTML — never long-cache (must revalidate so users get new deploys immediately)
+  ExpiresByType text/html "access plus 0 seconds"
+
+  # Vite hashed assets — 1 year immutable
+  <FilesMatch "\.(js|css|woff2|woff|ttf|eot|otf)$">
     Header set Cache-Control "public, max-age=31536000, immutable"
   </FilesMatch>
-  <FilesMatch "\.html$">
-    Header set Cache-Control "no-cache, no-store, must-revalidate"
+
+  # Images — 1 month
+  <FilesMatch "\.(jpg|jpeg|png|webp|avif|gif|svg|ico)$">
+    Header set Cache-Control "public, max-age=2592000"
   </FilesMatch>
 </IfModule>
 
+# --- 4. Security + performance headers ---
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+  # Preconnect to Supabase to shave the first API call
+  Header set Link "<https://snqsgqdovqrjsikcbaia.supabase.co>; rel=preconnect"
+</IfModule>
+
+# --- 5. Force HTTPS ---
+<IfModule mod_rewrite.c>
+  RewriteCond %{HTTPS} !=on
+  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+</IfModule>
+
+# --- 6. Security polish ---
 Options -Indexes

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { loadCompanyBranches, loadMenu } from '../services/dataService.js';
 import PublicMenu from './PublicMenu.jsx';
+import { getTransformedUrl } from '../lib/getTransformedUrl.js';
 
 const T = {
   en: {
@@ -161,7 +162,17 @@ export default function PublicMenuRedirect() {
       {/* Top Floating bar (language toggle) */}
       <header className="picker-top-bar" style={{ backgroundColor: 'var(--bg)', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
         <div className="picker-restaurant-header">
-          {company.logo_url && <img src={company.logo_url} alt="" className="picker-logo" />}
+          {company.logo_url && (
+            <img 
+              src={getTransformedUrl(company.logo_url, 160, 160)} 
+              alt="" 
+              className="picker-logo" 
+              width={80}
+              height={80}
+              loading="eager"
+              decoding="async"
+            />
+          )}
           <span style={{ fontWeight: 700 }}>{isRtl ? company.name_ar : company.name_en}</span>
         </div>
         <button className="picker-lang-btn" onClick={toggleLanguage}>
@@ -172,7 +183,16 @@ export default function PublicMenuRedirect() {
       {/* Hero Banner Area */}
       <div className="picker-cover-hero">
         {company.cover_url ? (
-          <img src={company.cover_url} alt="" className="picker-cover-img" />
+          <img 
+            src={getTransformedUrl(company.cover_url, 1200, 400)} 
+            alt="" 
+            className="picker-cover-img" 
+            width={1200}
+            height={400}
+            loading="eager"
+            fetchpriority="high"
+            decoding="async"
+          />
         ) : (
           <div className="picker-cover-fallback" style={{ backgroundColor: 'var(--primary-color)' }}></div>
         )}
@@ -199,7 +219,14 @@ export default function PublicMenuRedirect() {
               >
                 <div className="branch-card-image-box">
                   {branch.cover_url ? (
-                    <img src={branch.cover_url} alt="" />
+                    <img 
+                      src={getTransformedUrl(branch.cover_url, 600, 350)} 
+                      alt="" 
+                      width={300}
+                      height={175}
+                      loading="lazy"
+                      decoding="async"
+                    />
                   ) : (
                     <div className="branch-cover-fallback" style={{ backgroundColor: 'var(--primary-soft)' }}>
                       <span>📍</span>

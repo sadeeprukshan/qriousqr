@@ -1,39 +1,44 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useParams, useNavigate, useSearchParams, Outlet, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import { loadCompanyBranches } from './services/dataService.js';
 import PublicMenu from './pages/PublicMenu.jsx';
 import LandingPage from './pages/LandingPage.jsx';
-import AuthPage from './pages/AuthPage.jsx';
-import Dashboard from './pages/Dashboard.jsx';
 import ProductDetail from './pages/ProductDetail.jsx';
-import InviteAccept from './pages/InviteAccept.jsx';
 import PublicMenuRedirect from './pages/PublicMenuRedirect.jsx';
-import SetPasswordPage from './pages/SetPasswordPage.jsx';
-import PendingApprovalPage from './pages/PendingApprovalPage.jsx';
-import SuspendedPage from './pages/SuspendedPage.jsx';
-import TermsPage from './pages/legal/TermsPage.jsx';
-import PrivacyPage from './pages/legal/PrivacyPage.jsx';
 import RootErrorBoundary from './components/RootErrorBoundary.jsx';
-import ContactPage from './pages/ContactPage.jsx';
+import AppLoader from './components/AppLoader.jsx';
 
-// Admin Page Imports
-import AdminLogin from './pages/admin/AdminLogin.jsx';
-import AdminLayout from './pages/admin/AdminLayout.jsx';
-import AdminCompanies from './pages/admin/AdminCompanies.jsx';
-import AdminCompanyDetail from './pages/admin/AdminCompanyDetail.jsx';
-import AdminUsers from './pages/admin/AdminUsers.jsx';
-import AdminReports from './pages/admin/AdminReports.jsx';
-import CustomerRegisterPage from './pages/CustomerRegisterPage.jsx';
-import AdminCustomers from './pages/admin/AdminCustomers.jsx';
-import CustomerLoginPage from './pages/CustomerLoginPage.jsx';
-import CustomerDashboard from './pages/CustomerDashboard.jsx';
-import CustomerRestaurantSpace from './pages/CustomerRestaurantSpace.jsx';
-import CustomerLayout from './pages/CustomerLayout.jsx';
-import CustomerClaims from './pages/CustomerClaims.jsx';
-import CustomerProfile from './pages/CustomerProfile.jsx';
-import AdminClaims from './pages/admin/AdminClaims.jsx';
-import AdminMessages from './pages/admin/AdminMessages.jsx';
+// Lazy-loaded pages
+const AuthPage = lazy(() => import('./pages/AuthPage.jsx'));
+const Dashboard = lazy(() => import('./pages/Dashboard.jsx'));
+const InviteAccept = lazy(() => import('./pages/InviteAccept.jsx'));
+const SetPasswordPage = lazy(() => import('./pages/SetPasswordPage.jsx'));
+const PendingApprovalPage = lazy(() => import('./pages/PendingApprovalPage.jsx'));
+const SuspendedPage = lazy(() => import('./pages/SuspendedPage.jsx'));
+const TermsPage = lazy(() => import('./pages/legal/TermsPage.jsx'));
+const PrivacyPage = lazy(() => import('./pages/legal/PrivacyPage.jsx'));
+const ContactPage = lazy(() => import('./pages/ContactPage.jsx'));
+
+// Lazy-loaded Admin pages
+const AdminLogin = lazy(() => import('./pages/admin/AdminLogin.jsx'));
+const AdminLayout = lazy(() => import('./pages/admin/AdminLayout.jsx'));
+const AdminCompanies = lazy(() => import('./pages/admin/AdminCompanies.jsx'));
+const AdminCompanyDetail = lazy(() => import('./pages/admin/AdminCompanyDetail.jsx'));
+const AdminUsers = lazy(() => import('./pages/admin/AdminUsers.jsx'));
+const AdminCustomers = lazy(() => import('./pages/admin/AdminCustomers.jsx'));
+const AdminClaims = lazy(() => import('./pages/admin/AdminClaims.jsx'));
+const AdminReports = lazy(() => import('./pages/admin/AdminReports.jsx'));
+const AdminMessages = lazy(() => import('./pages/admin/AdminMessages.jsx'));
+
+// Lazy-loaded Customer pages
+const CustomerLoginPage = lazy(() => import('./pages/CustomerLoginPage.jsx'));
+const CustomerRegisterPage = lazy(() => import('./pages/CustomerRegisterPage.jsx'));
+const CustomerLayout = lazy(() => import('./pages/CustomerLayout.jsx'));
+const CustomerDashboard = lazy(() => import('./pages/CustomerDashboard.jsx'));
+const CustomerClaims = lazy(() => import('./pages/CustomerClaims.jsx'));
+const CustomerProfile = lazy(() => import('./pages/CustomerProfile.jsx'));
+const CustomerRestaurantSpace = lazy(() => import('./pages/CustomerRestaurantSpace.jsx'));
 
 function ProtectedRoute({ children }) {
   const { user, isSuperAdmin, isCustomer, loading, currentCompany } = useAuth();
@@ -189,55 +194,57 @@ export default function App() {
   return (
     <AuthProvider>
       <RootErrorBoundary>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/contact" element={<ContactPage />} />
-          <Route path="/auth" element={<AuthPage />} />
-          <Route path="/auth/set-password" element={<SetPasswordPage />} />
-          <Route path="/pending-approval" element={<PendingApprovalPage />} />
-          <Route path="/suspended" element={<SuspendedPage />} />
-          <Route path="/legal/terms" element={<TermsPage />} />
-          <Route path="/legal/privacy" element={<PrivacyPage />} />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
-          
-          {/* Super Admin Panel Routes */}
-          <Route path="/admin/login" element={<AdminLogin />} />
-          <Route path="/admin" element={<SuperAdminGate><AdminLayout /></SuperAdminGate>}>
-            <Route index element={<AdminCompanies />} />
-            <Route path="companies/:companyId" element={<AdminCompanyDetail />} />
-            <Route path="users" element={<AdminUsers />} />
-            <Route path="messages" element={<AdminMessages />} />
-            <Route path="customers" element={<AdminCustomers />} />
-            <Route path="claims" element={<AdminClaims />} />
-            <Route path="reports" element={<AdminReports />} />
-          </Route>
+        <Suspense fallback={<AppLoader />}>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/contact" element={<ContactPage />} />
+            <Route path="/auth" element={<AuthPage />} />
+            <Route path="/auth/set-password" element={<SetPasswordPage />} />
+            <Route path="/pending-approval" element={<PendingApprovalPage />} />
+            <Route path="/suspended" element={<SuspendedPage />} />
+            <Route path="/legal/terms" element={<TermsPage />} />
+            <Route path="/legal/privacy" element={<PrivacyPage />} />
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            
+            {/* Super Admin Panel Routes */}
+            <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/admin" element={<SuperAdminGate><AdminLayout /></SuperAdminGate>}>
+              <Route index element={<AdminCompanies />} />
+              <Route path="companies/:companyId" element={<AdminCompanyDetail />} />
+              <Route path="users" element={<AdminUsers />} />
+              <Route path="messages" element={<AdminMessages />} />
+              <Route path="customers" element={<AdminCustomers />} />
+              <Route path="claims" element={<AdminClaims />} />
+              <Route path="reports" element={<AdminReports />} />
+            </Route>
 
-          <Route path="/customer/login" element={<CustomerLoginPage />} />
-          <Route path="/customer/register" element={<CustomerRegisterPage />} />
-          
-          {/* Customer Portal Layout (Handles Gate + Nav Island) */}
-          <Route element={<CustomerLayout />}>
-            <Route path="/customer" element={<CustomerDashboard />} />
-            <Route path="/customer/claims" element={<CustomerClaims />} />
-            <Route path="/customer/profile" element={<CustomerProfile />} />
-            <Route path="/customer/restaurant/:slug" element={<CustomerRestaurantSpace />} />
-            <Route path="/customer/menu/:slug" element={<CustomerRestaurantSpace />} />
-          </Route>
+            <Route path="/customer/login" element={<CustomerLoginPage />} />
+            <Route path="/customer/register" element={<CustomerRegisterPage />} />
+            
+            {/* Customer Portal Layout (Handles Gate + Nav Island) */}
+            <Route element={<CustomerLayout />}>
+              <Route path="/customer" element={<CustomerDashboard />} />
+              <Route path="/customer/claims" element={<CustomerClaims />} />
+              <Route path="/customer/profile" element={<CustomerProfile />} />
+              <Route path="/customer/restaurant/:slug" element={<CustomerRestaurantSpace />} />
+              <Route path="/customer/menu/:slug" element={<CustomerRestaurantSpace />} />
+            </Route>
 
-          <Route path="/menu/:slug" element={<PublicMenuRedirect />} />
-          <Route path="/menu/:slug/:branchSlug" element={<PublicMenu />} />
-          <Route path="/menu/:slug/product/:productId" element={<ProductDetailRedirect />} />
-          <Route path="/menu/:slug/:branchSlug/product/:productId" element={<ProductDetail />} />
-          <Route path="/invite/:token" element={<InviteAccept />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+            <Route path="/menu/:slug" element={<PublicMenuRedirect />} />
+            <Route path="/menu/:slug/:branchSlug" element={<PublicMenu />} />
+            <Route path="/menu/:slug/product/:productId" element={<ProductDetailRedirect />} />
+            <Route path="/menu/:slug/:branchSlug/product/:productId" element={<ProductDetail />} />
+            <Route path="/invite/:token" element={<InviteAccept />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
       </RootErrorBoundary>
     </AuthProvider>
   );

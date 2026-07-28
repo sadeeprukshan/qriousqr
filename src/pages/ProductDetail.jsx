@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { loadMenu, loadAllergens, loadTags } from '../services/dataService.js';
 import { setDocumentMeta, resetDocumentMeta } from '../lib/setDocumentMeta.js';
+import { getTransformedUrl } from '../lib/getTransformedUrl.js';
 
 const T = {
   en: {
@@ -233,7 +234,16 @@ export default function ProductDetail() {
       {/* Hero Image Section */}
       <div className="detail-hero">
         {product.image_url ? (
-          <img src={product.image_url} alt={name} className="detail-hero-img" />
+          <img 
+            src={getTransformedUrl(product.image_url, 800, 500)} 
+            alt={name} 
+            className="detail-hero-img" 
+            width={800}
+            height={500}
+            loading="eager"
+            fetchpriority="high"
+            decoding="async"
+          />
         ) : (
           <div className="detail-hero-fallback" style={{ backgroundColor: 'var(--primary-color)' }}>
             <span className="fallback-letter">{name.charAt(0).toUpperCase()}</span>

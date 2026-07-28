@@ -3,6 +3,8 @@ import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { loadMenu, logProductClick, logVisit } from '../services/dataService.js';
 import { useInstallPrompt } from '../hooks/useInstallPrompt.js';
 import { setDocumentMeta, resetDocumentMeta } from '../lib/setDocumentMeta.js';
+import { getTransformedUrl } from '../lib/getTransformedUrl.js';
+import { saveMenuScroll, restoreMenuScroll } from '../lib/scrollMemory.js';
 
 const T = {
   en: { 
@@ -118,10 +120,12 @@ export default function PublicMenu({ slug: propSlug, branchSlug: propBranchSlug,
   
   const lang = searchParams.get('lang') === 'ar' ? 'ar' : 'en';
   const setLang = (newLang) => {
-    setSearchParams({ lang: newLang });
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.set('lang', newLang);
+      return next;
+    });
   };
-  
-  const [activeCat, setActiveCat] = useState(null);
   const sectionRefs = useRef({});
   const chipRefs = useRef({});
   const catScrollRef = useRef(null);
@@ -255,9 +259,24 @@ export default function PublicMenu({ slug: propSlug, branchSlug: propBranchSlug,
     })).filter(g => g.items.length > 0);
   }, [data]);
 
-  useEffect(() => {
-    if (grouped.length && !activeCat) setActiveCat(grouped[0].cat.id);
-  }, [grouped, activeCat]);
+  const urlCat = searchParams.get('cat');
+  const activeCat = useMemo(() => {
+    if (!grouped.length) return null;
+    const exists = grouped.some(g => g.cat.id === urlCat);
+    return exists ? urlCat : grouped[0].cat.id;
+  }, [grouped, urlCat]);
+
+  const setActiveCat = (catId) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (catId) {
+        next.set('cat', catId);
+      } else {
+        next.delete('cat');
+      }
+      return next;
+    }, { replace: true });
+  };
 
   // Position-based scroll spy tracker
   const tickingRef = useRef(false);
@@ -315,6 +334,22 @@ export default function PublicMenu({ slug: propSlug, branchSlug: propBranchSlug,
     };
   }, [grouped]);
 
+  // Center horizontal category tab chip when activeCat changes
+  useEffect(() => {
+    if (!catScrollRef.current) return;
+    const active = catScrollRef.current.querySelector('[data-active="true"]');
+    if (active) {
+      active.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'auto' });
+    }
+  }, [activeCat]);
+
+  // Restore scroll position on mount / data load
+  useEffect(() => {
+    if (data && grouped.length > 0) {
+      restoreMenuScroll(slug);
+    }
+  }, [data, grouped.length, slug]);
+
   function scrollToCat(catId) {
     isScrollingRef.current = true;
     setActiveCat(catId);
@@ -337,6 +372,7 @@ export default function PublicMenu({ slug: propSlug, branchSlug: propBranchSlug,
   }
 
   const handleProductClick = (cId, pId) => {
+    saveMenuScroll(slug);
     logProductClick(cId, pId, data?.branch?.id);
     navigate(`/menu/${slug}/${branchSlug}/product/${pId}?lang=${lang}`);
   };
@@ -451,10 +487,13 @@ export default function PublicMenu({ slug: propSlug, branchSlug: propBranchSlug,
         <div className="cover">
           {c.cover_url && (
             <img 
-              src={c.cover_url} 
+              src={getTransformedUrl(c.cover_url, 1200, 400)} 
               alt="" 
+              width={1200}
+              height={400}
               loading="eager" 
               fetchpriority="high"
+              decoding="async"
             />
           )}
 
@@ -522,7 +561,16 @@ export default function PublicMenu({ slug: propSlug, branchSlug: propBranchSlug,
       {!isCustomerSpace && (
         <header className="header">
           <div className="logo">
-            {c.logo_url ? <img src={c.logo_url} alt={name} /> : null}
+            {c.logo_url ? (
+              <img 
+                src={getTransformedUrl(c.logo_url, 160, 160)} 
+                alt={name} 
+                width={80}
+                height={80}
+                loading="eager"
+                decoding="async"
+              />
+            ) : null}
           </div>
           <h1 className="brand-name">{name}</h1>
           {data.branches && data.branches.length >= 2 && data.branch && (
@@ -555,9 +603,20 @@ export default function PublicMenu({ slug: propSlug, branchSlug: propBranchSlug,
                 ref={el => (chipRefs.current[cat.id] = el)}
                 className={`cat-tile ${activeCat === cat.id ? 'active' : ''}`}
                 onClick={(e) => handleChipClick(e, cat.id)}
+                data-active={activeCat === cat.id}
               >
                 <div className="cat-tile-avatar">
-                  {cat.image_url ? <img src={cat.image_url} alt={isRtl ? cat.name_ar : cat.name_en} draggable="false" /> : null}
+                  {cat.image_url ? (
+                    <img 
+                      src={getTransformedUrl(cat.image_url, 96, 96)} 
+                      alt={isRtl ? cat.name_ar : cat.name_en} 
+                      width={48}
+                      height={48}
+                      loading="lazy"
+                      decoding="async"
+                      draggable="false" 
+                    />
+                  ) : null}
                 </div>
                 <span className="cat-tile-name">{isRtl ? cat.name_ar : cat.name_en}</span>
               </button>
@@ -567,7 +626,7 @@ export default function PublicMenu({ slug: propSlug, branchSlug: propBranchSlug,
       </div>
 
       <main>
-        {grouped.map(({ cat, items }) => (
+        {grouped.map(({ cat, items }, catIdx) => (
           <section
             key={cat.id}
             className="section"
@@ -575,22 +634,34 @@ export default function PublicMenu({ slug: propSlug, branchSlug: propBranchSlug,
             ref={el => (sectionRefs.current[cat.id] = el)}
           >
             <h2 className="section-title">{isRtl ? cat.name_ar : cat.name_en}</h2>
-            {items.map(p => (
-              <article
-                key={p.id}
-                className={`product ${!p.is_available ? 'unavailable' : ''}`}
-                onClick={() => handleProductClick(c.id, p.id)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    handleProductClick(c.id, p.id);
-                  }
-                }}
-              >
-                <div className="product-img" style={{ position: 'relative' }}>
-                  {p.image_url && <img src={p.image_url} alt="" loading="lazy" />}
+            {items.map((p, pIdx) => {
+              const isFirstProductPhoto = catIdx === 0 && pIdx === 0;
+              return (
+                <article
+                  key={p.id}
+                  className={`product ${!p.is_available ? 'unavailable' : ''}`}
+                  onClick={() => handleProductClick(c.id, p.id)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleProductClick(c.id, p.id);
+                    }
+                  }}
+                >
+                  <div className="product-img" style={{ position: 'relative' }}>
+                    {p.image_url && (
+                      <img 
+                        src={getTransformedUrl(p.image_url, 400, 400)} 
+                        alt="" 
+                        width={200}
+                        height={200}
+                        loading={isFirstProductPhoto ? "eager" : "lazy"} 
+                        fetchpriority={isFirstProductPhoto ? "high" : undefined}
+                        decoding="async"
+                      />
+                    )}
                   {eligibleCouponCategories?.has(p.coupon_category) && (
                     <div style={{
                       position: 'absolute',
@@ -628,7 +699,7 @@ export default function PublicMenu({ slug: propSlug, branchSlug: propBranchSlug,
                   </div>
                 </div>
               </article>
-            ))}
+            ); })}
           </section>
         ))}
       </main>

@@ -10,7 +10,21 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
+    target: 'es2020',
+    cssCodeSplit: true,
     sourcemap: false,
-    chunkSizeWarningLimit: 800
+    minify: 'esbuild',
+    chunkSizeWarningLimit: 500,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'supabase': ['@supabase/supabase-js'],
+        },
+        assetFileNames: 'assets/[name]-[hash][extname]',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        entryFileNames: 'assets/[name]-[hash].js',
+      },
+    },
   }
 });
