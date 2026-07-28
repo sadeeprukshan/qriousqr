@@ -2412,14 +2412,21 @@ export default function Dashboard() {
                                 {p.is_available ? 'Available' : 'Sold Out'}
                               </span>
                             ) : (
-                              <label className="checkbox-availability-inline" onClick={e => e.stopPropagation()}>
-                                <input 
-                                  type="checkbox"
-                                  checked={p.is_available}
-                                  onChange={(e) => handleToggleAvailability(e, p)}
-                                />
-                                <span>Available</span>
-                              </label>
+                              <div style={{ display: 'inline-flex', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
+                                <button
+                                  type="button"
+                                  role="switch"
+                                  aria-checked={p.is_available}
+                                  aria-label={p.is_available ? 'Available — click to hide' : 'Unavailable — click to show'}
+                                  onClick={(e) => handleToggleAvailability(e, p)}
+                                  className={`avail-toggle ${p.is_available ? 'is-on' : 'is-off'}`}
+                                >
+                                  <span className="avail-toggle__knob" />
+                                </button>
+                                <span className={`avail-label ${p.is_available ? 'is-on' : 'is-off'}`}>
+                                  {p.is_available ? 'Available' : 'Unavailable'}
+                                </span>
+                              </div>
                             )}
                             
                             {p.calories && <span className="cal-badge">{p.calories} kcal</span>}

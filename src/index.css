@@ -4295,4 +4295,76 @@ body[dir="rtl"] .cover-install-btn {
   }
 }
 
+/* Product Availability Toggle Switch (Phase 27) */
+.avail-toggle {
+  --track-w: 40px;
+  --track-h: 22px;
+  --knob-d: 18px;
+  --pad: 2px;
+
+  position: relative;
+  width: var(--track-w);
+  height: var(--track-h);
+  border: none;
+  border-radius: 999px;
+  background: #D9D9D9;              /* OFF: neutral grey track */
+  cursor: pointer;
+  padding: 0;
+  transition: background-color 0.22s ease;
+  flex-shrink: 0;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.avail-toggle.is-on {
+  background: #FF5722;              /* ON: brand orange */
+}
+
+.avail-toggle__knob {
+  position: absolute;
+  top: var(--pad);
+  left: var(--pad);
+  width: var(--knob-d);
+  height: var(--knob-d);
+  border-radius: 50%;
+  background: #FFFFFF;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.18);
+  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.avail-toggle.is-on .avail-toggle__knob {
+  transform: translateX(calc(var(--track-w) - var(--knob-d) - (var(--pad) * 2)));
+}
+
+.avail-toggle:focus-visible {
+  outline: 2px solid #FF5722;
+  outline-offset: 2px;
+}
+
+.avail-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Optional label next to toggle switch */
+.avail-label {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  margin-left: 8px;
+  user-select: none;
+  transition: color 0.22s ease;
+  vertical-align: middle;
+}
+.avail-label.is-on  { color: #111; }
+.avail-label.is-off { color: #999; }
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .avail-label {
+    display: none;
+  }
+}
+
+
 
