@@ -17,9 +17,7 @@ export default function CustomerLayout() {
 
   // Auth Guard
   if (!user || !isCustomer) {
-    const searchParams = new URLSearchParams(location.search);
-    const lang = searchParams.get('lang') === 'ar' ? 'ar' : 'en';
-    return <Navigate to={`/customer/login?lang=${lang}`} replace />;
+    return <Navigate to="/customer/login" replace />;
   }
 
   return (

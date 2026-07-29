@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useLang } from '../context/LanguageContext.jsx';
 import { loadCompanyBranches, loadMenu } from '../services/dataService.js';
 import PublicMenu from './PublicMenu.jsx';
 import { getTransformedUrl } from '../lib/getTransformedUrl.js';
@@ -69,7 +70,7 @@ export default function PublicMenuRedirect() {
   const [preloadedData, setPreloadedData] = useState(null);
   const [isSingleBranch, setIsSingleBranch] = useState(false);
 
-  const lang = searchParams.get('lang') === 'ar' ? 'ar' : 'en';
+  const { lang } = useLang();
   const isRtl = lang === 'ar';
   const t = T[lang];
 
@@ -215,7 +216,7 @@ export default function PublicMenuRedirect() {
               <div 
                 key={branch.id} 
                 className="branch-picker-card" 
-                onClick={() => navigate(`/menu/${slug}/${branch.slug}?lang=${lang}`)}
+                onClick={() => navigate(`/menu/${slug}/${branch.slug}`)}
               >
                 <div className="branch-card-image-box">
                   {branch.cover_url ? (

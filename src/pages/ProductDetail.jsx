@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useLang } from '../context/LanguageContext.jsx';
 import { loadMenu, loadAllergens, loadTags } from '../services/dataService.js';
 import { setDocumentMeta, resetDocumentMeta } from '../lib/setDocumentMeta.js';
 import { getTransformedUrl } from '../lib/getTransformedUrl.js';
@@ -60,8 +61,7 @@ export default function ProductDetail() {
   const [allergensList, setAllergensList] = useState([]);
   const [tagsList, setTagsList] = useState([]);
 
-  // Preserve language from URL search param
-  const lang = searchParams.get('lang') === 'ar' ? 'ar' : 'en';
+  const { lang } = useLang();
   const isRtl = lang === 'ar';
   const t = T[lang];
 
@@ -171,7 +171,7 @@ export default function ProductDetail() {
   };
 
   const handleBack = () => {
-    navigate(`/menu/${slug}/${branchSlug}?lang=${lang}`);
+    navigate(`/menu/${slug}/${branchSlug}`);
   };
 
   if (loading) {
@@ -208,7 +208,7 @@ export default function ProductDetail() {
         <div className="empty">
           <h2>{t.notFound}</h2>
           <p>{t.notFoundDesc}</p>
-          <Link to={`/menu/${slug}/${branchSlug}?lang=${lang}`} className="btn-primary-landing" style={{ display: 'inline-block', marginTop: '20px' }}>
+          <Link to={`/menu/${slug}/${branchSlug}`} className="btn-primary-landing" style={{ display: 'inline-block', marginTop: '20px' }}>
             {t.backToMenu}
           </Link>
         </div>

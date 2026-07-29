@@ -34,20 +34,35 @@ export function AuthProvider({ children }) {
   const [currentCompanyId, setCurrentCompanyId] = useState('');
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [isCustomer, setIsCustomer] = useState(false);
+  const [customer, setCustomer] = useState(null);
+
+  const isPremium = useMemo(() => {
+    return customer?.tier === 'premium';
+  }, [customer]);
 
   const checkCustomerStatus = async (usr) => {
     if (!usr) {
       setIsCustomer(false);
+      setCustomer(null);
       return false;
     }
     if (isMockMode) {
       try {
         const mockCusts = JSON.parse(localStorage.getItem('qriousqr:mock_customer_users') || '[]');
-        const isCust = mockCusts.some(c => c.email.toLowerCase() === usr.email.toLowerCase());
-        setIsCustomer(isCust);
-        return isCust;
+        const matched = mockCusts.find(c => c.email.toLowerCase() === usr.email.toLowerCase());
+        if (matched) {
+          setIsCustomer(true);
+          const tier = matched.email.toLowerCase() === 'diner@qriousqr.local' ? 'premium' : (matched.tier || 'regular');
+          setCustomer({ ...matched, tier });
+          return true;
+        } else {
+          setIsCustomer(false);
+          setCustomer(null);
+          return false;
+        }
       } catch {
         setIsCustomer(false);
+        setCustomer(null);
         return false;
       }
     } else {
@@ -55,9 +70,15 @@ export function AuthProvider({ children }) {
         const { data, error } = await supabase.rpc('customer_me');
         const isCust = !error && Array.isArray(data) && data.length > 0;
         setIsCustomer(isCust);
+        if (isCust) {
+          setCustomer(data[0]);
+        } else {
+          setCustomer(null);
+        }
         return isCust;
       } catch {
         setIsCustomer(false);
+        setCustomer(null);
         return false;
       }
     }
@@ -480,6 +501,9 @@ export function AuthProvider({ children }) {
     isSuperAdmin,
     checkSuperAdminStatus,
     isCustomer,
+    customer,
+    isPremium,
+    setCustomer,
     checkCustomerStatus
   };
 

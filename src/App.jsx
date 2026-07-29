@@ -1,6 +1,7 @@
 import React, { useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useParams, useNavigate, useSearchParams, Outlet, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
+import { useLang } from './context/LanguageContext.jsx';
 import { loadCompanyBranches } from './services/dataService.js';
 import PublicMenu from './pages/PublicMenu.jsx';
 import LandingPage from './pages/LandingPage.jsx';
@@ -159,8 +160,7 @@ function CustomerGate({ children }) {
 function ProductDetailRedirect() {
   const { slug, productId } = useParams();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const lang = searchParams.get('lang') || 'en';
+  const { lang } = useLang();
   
   useEffect(() => {
     let cancelled = false;
@@ -171,17 +171,17 @@ function ProductDetailRedirect() {
         if (result && result.branches && result.branches.length > 0) {
           const activeBranches = result.branches.filter(b => b.is_active);
           const targetBranch = activeBranches.find(b => b.is_default) || activeBranches[0] || result.branches[0];
-          navigate(`/menu/${slug}/${targetBranch.slug}/product/${productId}?lang=${lang}`, { replace: true });
+          navigate(`/menu/${slug}/${targetBranch.slug}/product/${productId}`, { replace: true });
         } else {
-          navigate(`/menu/${slug}/main/product/${productId}?lang=${lang}`, { replace: true });
+          navigate(`/menu/${slug}/main/product/${productId}`, { replace: true });
         }
       } catch (e) {
         console.error(e);
-        navigate(`/menu/${slug}/main/product/${productId}?lang=${lang}`, { replace: true });
+        navigate(`/menu/${slug}/main/product/${productId}`, { replace: true });
       }
     })();
     return () => { cancelled = true; };
-  }, [slug, productId, navigate, lang]);
+  }, [slug, productId, navigate]);
 
   return (
     <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', fontFamily: 'var(--font-en)' }}>

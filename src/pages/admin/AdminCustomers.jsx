@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useLayoutEffect } from 're
 import { createPortal } from 'react-dom';
 import { adminListCustomers, adminDeleteCustomer } from '../../services/adminService.js';
 import { COUNTRIES } from '../../lib/countries.js';
+import { supabase, isMockMode } from '../../supabaseClient.js';
 import QSuccessToast from '../../components/QSuccessToast.jsx';
 
 function RowActionMenu({ triggerRef, open, onClose, children }) {
@@ -156,6 +157,37 @@ export default function AdminCustomers() {
       setErrorMsg(err.message || 'Failed to retrieve customers.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleTier = async (customerId, targetTier, email) => {
+    if (targetTier === 'regular') {
+      const confirmDemote = window.confirm(`Are you sure you want to demote customer "${email}" from Premium to Regular tier?`);
+      if (!confirmDemote) return;
+    }
+
+    try {
+      if (isMockMode) {
+        // Toggle in localStorage mock database
+        const mockCusts = JSON.parse(localStorage.getItem('qriousqr:mock_customer_users') || '[]');
+        const updated = mockCusts.map(c => c.id === customerId ? { ...c, tier: targetTier } : c);
+        localStorage.setItem('qriousqr:mock_customer_users', JSON.stringify(updated));
+
+        // Update local state
+        setCustomers(prev => prev.map(c => c.id === customerId ? { ...c, tier: targetTier } : c));
+        setToast(`Successfully updated customer tier to ${targetTier}.`);
+      } else {
+        const { error } = await supabase.rpc('admin_set_customer_tier', {
+          p_customer_id: customerId,
+          p_tier: targetTier
+        });
+        if (error) throw error;
+        setCustomers(prev => prev.map(c => c.id === customerId ? { ...c, tier: targetTier } : c));
+        setToast(`Successfully updated customer tier to ${targetTier}.`);
+      }
+    } catch (err) {
+      console.error(err);
+      setErrorMsg(err.message || 'Failed to update customer tier.');
     }
   };
 
@@ -432,6 +464,7 @@ export default function AdminCustomers() {
                 <th>Country</th>
                 <th>Gender</th>
                 <th>Birthday</th>
+                <th>Tier</th>
                 <th>Signed up</th>
                 <th style={{ width: '80px', textAlign: 'center' }}>Actions</th>
               </tr>
@@ -492,6 +525,33 @@ export default function AdminCustomers() {
                       {c.birthday ? new Date(c.birthday).toLocaleDateString() : '-'}
                     </td>
 
+                    {/* Tier */}
+                    <td>
+                      {c.tier === 'premium' ? (
+                        <span style={{
+                          backgroundColor: '#FFEFEA',
+                          color: '#FF5722',
+                          fontSize: '11px',
+                          fontWeight: '700',
+                          padding: '4px 10px',
+                          borderRadius: '12px'
+                        }}>
+                          Premium
+                        </span>
+                      ) : (
+                        <span style={{
+                          backgroundColor: '#F1F5F9',
+                          color: '#475569',
+                          fontSize: '11px',
+                          fontWeight: '700',
+                          padding: '4px 10px',
+                          borderRadius: '12px'
+                        }}>
+                          Regular
+                        </span>
+                      )}
+                    </td>
+
                     {/* Created at (relative time) */}
                     <td style={{ fontSize: '13px', color: 'var(--text-soft)' }}>
                       {formatRelativeTime(c.created_at)}
@@ -539,6 +599,32 @@ export default function AdminCustomers() {
                         >
                           Copy phone
                         </MenuItem>
+
+                        {c.tier === 'premium' ? (
+                          <MenuItem
+                            icon={
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '16px', height: '16px' }}>
+                                <circle cx="12" cy="12" r="10" />
+                                <line x1="12" y1="8" x2="12" y2="12" />
+                                <line x1="12" y1="16" x2="12.01" y2="16" />
+                              </svg>
+                            }
+                            onSelect={() => handleToggleTier(c.id, 'regular', c.email)}
+                          >
+                            Set Regular
+                          </MenuItem>
+                        ) : (
+                          <MenuItem
+                            icon={
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '16px', height: '16px' }}>
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                              </svg>
+                            }
+                            onSelect={() => handleToggleTier(c.id, 'premium', c.email)}
+                          >
+                            Set Premium
+                          </MenuItem>
+                        )}
 
                         <MenuDivider />
 

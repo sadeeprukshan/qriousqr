@@ -1,5 +1,7 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.jsx';
+import { useLang } from '../context/LanguageContext.jsx';
 
 function HomeIcon({ filled }) {
   return (
@@ -31,10 +33,8 @@ function UserIcon({ filled }) {
 export default function CustomerNavIsland() {
   const location = useLocation();
   const navigate = useNavigate();
-  
-  // Detect language from search params or localStorage
-  const searchParams = new URLSearchParams(location.search);
-  const lang = searchParams.get('lang') === 'ar' ? 'ar' : 'en';
+  const { isPremium } = useAuth();
+  const { lang } = useLang();
   const isRtl = lang === 'ar';
 
   const pathname = location.pathname;
@@ -46,8 +46,7 @@ export default function CustomerNavIsland() {
   }
 
   const handleNav = (route) => {
-    // Preserve language param
-    navigate(`${route}?lang=${lang}`);
+    navigate(route);
   };
 
   const navItems = [
@@ -57,7 +56,7 @@ export default function CustomerNavIsland() {
       route: '/customer',
       icon: (filled) => <HomeIcon filled={filled} />
     },
-    {
+    isPremium && {
       key: 'coupons',
       label: isRtl ? 'قسائمي' : 'Coupons',
       route: '/customer/claims',
@@ -69,7 +68,7 @@ export default function CustomerNavIsland() {
       route: '/customer/profile',
       icon: (filled) => <UserIcon filled={filled} />
     }
-  ];
+  ].filter(Boolean);
 
   return (
     <div style={{
@@ -89,7 +88,7 @@ export default function CustomerNavIsland() {
       alignItems: 'center',
       gap: '4px',
       zIndex: 900,
-      width: '280px',
+      width: isPremium ? '280px' : '190px',
       border: '1px solid rgba(255, 255, 255, 0.7)'
     }}>
       {navItems.map((item) => {

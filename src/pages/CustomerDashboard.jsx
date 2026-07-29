@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useLang } from '../context/LanguageContext.jsx';
 import { supabase, isMockMode } from '../supabaseClient.js';
 import { useAuth } from '../context/AuthContext.jsx';
 
@@ -38,7 +39,7 @@ const T = {
 export default function CustomerDashboard() {
   const navigate = useNavigate();
   const { signOut } = useAuth();
-  const [lang, setLang] = useState('en');
+  const { lang, toggleLang } = useLang();
   const [customer, setCustomer] = useState(null);
   const [restaurants, setRestaurants] = useState([]);
   const [couponCounts, setCouponCounts] = useState({});
@@ -235,7 +236,7 @@ export default function CustomerDashboard() {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <button
-              onClick={() => setLang(lang === 'en' ? 'ar' : 'en')}
+              onClick={toggleLang}
               style={{
                 background: 'none',
                 border: 'none',

@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase, isMockMode } from '../supabaseClient.js';
 import { translateCategory } from '../lib/couponCategories.js';
+import { useAuth } from '../context/AuthContext.jsx';
+import UpgradeToPremiumCard from '../components/UpgradeToPremiumCard.jsx';
+import { useLang } from '../context/LanguageContext.jsx';
 
 const T = {
   en: {
@@ -29,14 +32,19 @@ const T = {
 export default function CustomerClaims() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { isPremium } = useAuth();
+  const { lang } = useLang();
   const [claims, setClaims] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const lang = searchParams.get('lang') === 'ar' ? 'ar' : 'en';
   const t = T[lang];
   const isRtl = lang === 'ar';
 
   useEffect(() => {
+    if (!isPremium) {
+      setLoading(false);
+      return;
+    }
     async function loadClaims() {
       try {
         if (isMockMode) {
@@ -85,6 +93,25 @@ export default function CustomerClaims() {
     );
   }
 
+  if (!isPremium) {
+    return (
+      <div style={{
+        maxWidth: '600px',
+        margin: '0 auto',
+        padding: '24px 16px 40px 16px',
+        boxSizing: 'border-box',
+        direction: isRtl ? 'rtl' : 'ltr',
+        fontFamily: isRtl ? 'var(--font-ar)' : 'var(--font-en)',
+        textAlign: isRtl ? 'right' : 'left'
+      }}>
+        <h2 style={{ fontSize: '24px', fontWeight: '800', margin: '0 0 16px 0', color: 'var(--text)' }}>
+          {t.title}
+        </h2>
+        <UpgradeToPremiumCard lang={lang} />
+      </div>
+    );
+  }
+
   return (
     <div style={{
       maxWidth: '600px',
@@ -118,7 +145,7 @@ export default function CustomerClaims() {
             {t.emptySub}
           </p>
           <button
-            onClick={() => navigate(`/customer?lang=${lang}`)}
+            onClick={() => navigate('/customer')}
             style={{
               padding: '10px 20px',
               borderRadius: '8px',
@@ -148,7 +175,7 @@ export default function CustomerClaims() {
             return (
               <div
                 key={claim.claim_id}
-                onClick={() => navigate(`/customer/restaurant/${claim.company_slug}?lang=${lang}`)}
+                onClick={() => navigate(`/customer/restaurant/${claim.company_slug}`)}
                 style={{
                   background: '#FFFFFF',
                   border: '1px solid var(--border)',

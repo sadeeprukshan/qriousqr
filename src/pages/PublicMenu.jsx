@@ -5,6 +5,7 @@ import { useInstallPrompt } from '../hooks/useInstallPrompt.js';
 import { setDocumentMeta, resetDocumentMeta } from '../lib/setDocumentMeta.js';
 import { getTransformedUrl } from '../lib/getTransformedUrl.js';
 import { saveMenuScroll, restoreMenuScroll } from '../lib/scrollMemory.js';
+import { useLang } from '../context/LanguageContext.jsx';
 
 const T = {
   en: { 
@@ -118,14 +119,7 @@ export default function PublicMenu({ slug: propSlug, branchSlug: propBranchSlug,
   const [toastMessage, setToastMessage] = useState('');
   const [showBranchSelect, setShowBranchSelect] = useState(false);
   
-  const lang = searchParams.get('lang') === 'ar' ? 'ar' : 'en';
-  const setLang = (newLang) => {
-    setSearchParams(prev => {
-      const next = new URLSearchParams(prev);
-      next.set('lang', newLang);
-      return next;
-    });
-  };
+  const { lang, setLang } = useLang();
   const [activeCat, setActiveCat] = useState(null);
   const sectionRefs = useRef(new Map());
   const registerSectionRef = (key, el) => {
@@ -354,7 +348,7 @@ export default function PublicMenu({ slug: propSlug, branchSlug: propBranchSlug,
   const handleProductClick = (cId, pId) => {
     saveMenuScroll(slug);
     logProductClick(cId, pId, data?.branch?.id);
-    navigate(`/menu/${slug}/${branchSlug}/product/${pId}?lang=${lang}`);
+    navigate(`/menu/${slug}/${branchSlug}/product/${pId}`);
   };
 
   const showToast = (message) => {
@@ -491,7 +485,7 @@ export default function PublicMenu({ slug: propSlug, branchSlug: propBranchSlug,
                       className={`cover-branch-option ${b.id === data.branch?.id ? 'active' : ''}`}
                       onClick={() => {
                         setShowBranchSelect(false);
-                        navigate(`/menu/${slug}/${b.slug}?lang=${lang}`);
+                        navigate(`/menu/${slug}/${b.slug}`);
                       }}
                     >
                       {isRtl ? b.name_ar : b.name_en}

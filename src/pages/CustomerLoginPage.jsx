@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { supabase, isMockMode } from '../supabaseClient.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useLang } from '../context/LanguageContext.jsx';
 
 const T = {
   en: {
@@ -37,7 +38,7 @@ export default function CustomerLoginPage() {
   const [searchParams] = useSearchParams();
   const { checkCustomerStatus } = useAuth();
 
-  const [lang, setLang] = useState('en');
+  const { lang, toggleLang } = useLang();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -209,7 +210,7 @@ export default function CustomerLoginPage() {
       }}>
         {/* Language Toggle */}
         <button
-          onClick={() => setLang(lang === 'en' ? 'ar' : 'en')}
+          onClick={toggleLang}
           style={{
             position: 'absolute',
             top: '24px',

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { supabase, isMockMode } from '../supabaseClient.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { COUNTRIES, dialForCountry } from '../lib/countries.js';
 import ChangePasswordForm from '../components/ChangePasswordForm.jsx';
+import UpgradeToPremiumCard from '../components/UpgradeToPremiumCard.jsx';
+import { useLang } from '../context/LanguageContext.jsx';
 
 const T = {
   en: {
@@ -80,7 +82,7 @@ const T = {
 
 export default function CustomerProfile() {
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { signOut, customer, isPremium } = useAuth();
   const [searchParams] = useSearchParams();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -107,7 +109,7 @@ export default function CustomerProfile() {
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailMessage, setEmailMessage] = useState('');
 
-  const lang = searchParams.get('lang') === 'ar' ? 'ar' : 'en';
+  const { lang } = useLang();
   const t = T[lang];
   const isRtl = lang === 'ar';
 
@@ -179,7 +181,7 @@ export default function CustomerProfile() {
 
   const handleSignOut = async () => {
     await signOut();
-    navigate(`/customer/login?lang=${lang}`);
+    navigate('/customer/login');
   };
 
   const handleCountryChange = (code) => {
@@ -379,6 +381,54 @@ export default function CustomerProfile() {
           <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: 'var(--text)' }}>
             {profile?.full_name}
           </h3>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontSize: '13px',
+            marginTop: '6px',
+            color: 'var(--text-soft)',
+            fontFamily: lang === 'ar' ? 'var(--font-ar)' : 'var(--font-en)'
+          }}>
+            <span>{lang === 'ar' ? 'العضوية:' : 'Membership:'}</span>
+            {isPremium ? (
+              <span style={{
+                backgroundColor: '#FFEFEA',
+                color: '#FF5722',
+                fontSize: '11px',
+                fontWeight: '700',
+                padding: '2px 8px',
+                borderRadius: '12px'
+              }}>
+                {lang === 'ar' ? 'بريميوم' : 'Premium'}
+              </span>
+            ) : (
+              <>
+                <span style={{
+                  backgroundColor: '#F3F4F6',
+                  color: '#4B5563',
+                  fontSize: '11px',
+                  fontWeight: '700',
+                  padding: '2px 8px',
+                  borderRadius: '12px'
+                }}>
+                  {lang === 'ar' ? 'عادي' : 'Regular'}
+                </span>
+                <span style={{ color: '#9CA3AF' }}>·</span>
+                <Link 
+                  to="/contact?subject=upgrade&message=I%20would%20like%20to%20upgrade%20to%20Premium"
+                  style={{
+                    color: '#FF5722',
+                    textDecoration: 'none',
+                    fontWeight: '600',
+                    fontSize: '12px'
+                  }}
+                >
+                  {lang === 'ar' ? 'ترقية ←' : 'Upgrade →'}
+                </Link>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Form Inputs */}
@@ -725,6 +775,8 @@ export default function CustomerProfile() {
         </h3>
         <ChangePasswordForm lang={lang} />
       </div>
+
+      {!isPremium && <UpgradeToPremiumCard lang={lang} />}
 
       <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '24px 0' }} />
 

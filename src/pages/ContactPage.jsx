@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import QSuccessToast from '../components/QSuccessToast.jsx';
 import './ContactPage.css';
 
@@ -26,10 +26,24 @@ export default function ContactPage() {
     message: ''
   });
 
-  // Set page title on mount
+  const [searchParams] = useSearchParams();
+
+  // Set page title and pre-fill fields on mount
   useEffect(() => {
     document.title = "Get a Quote · QriousQR";
-  }, []);
+    const sub = searchParams.get('subject');
+    const msg = searchParams.get('message');
+    if (sub || msg) {
+      let combined = '';
+      if (sub) {
+        combined += `Subject: ${sub.charAt(0).toUpperCase() + sub.slice(1)}\n`;
+      }
+      if (msg) {
+        combined += msg;
+      }
+      setMessage(combined);
+    }
+  }, [searchParams]);
 
   // Validate fields on change
   const handleFieldChange = (field, value, setter) => {

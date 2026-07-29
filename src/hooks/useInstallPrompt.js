@@ -5,7 +5,6 @@ export function useInstallPrompt() {
 
   useEffect(() => {
     function onBeforeInstall(e) {
-      e.preventDefault();
       setEvent(e);
     }
     window.addEventListener('beforeinstallprompt', onBeforeInstall);

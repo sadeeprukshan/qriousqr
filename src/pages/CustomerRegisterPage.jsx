@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { COUNTRIES, dialForCountry } from '../lib/countries.js';
 import { supabase, isMockMode } from '../supabaseClient.js';
+import { useLang } from '../context/LanguageContext.jsx';
 
 const T = {
   en: {
@@ -87,7 +88,7 @@ function generateMockCustomerPin(phoneFull) {
 
 export default function CustomerRegisterPage() {
   const navigate = useNavigate();
-  const [lang, setLang] = useState('en');
+  const { lang, toggleLang } = useLang();
   const [success, setSuccess] = useState(false);
   const [successData, setSuccessData] = useState(null);
   const [copied, setCopied] = useState(false);
@@ -427,7 +428,7 @@ export default function CustomerRegisterPage() {
       }}>
         {/* Language Switcher */}
         <button
-          onClick={() => setLang(lang === 'en' ? 'ar' : 'en')}
+          onClick={toggleLang}
           style={{
             position: 'absolute',
             top: '24px',

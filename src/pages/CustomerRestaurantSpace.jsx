@@ -3,6 +3,8 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase, isMockMode } from '../supabaseClient.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import PublicMenu from './PublicMenu.jsx';
+import UpgradeToPremiumCard from '../components/UpgradeToPremiumCard.jsx';
+import { useLang } from '../context/LanguageContext.jsx';
 import { claimStep1, cancelMyClaim } from '../services/couponService.js';
 
 const T = {
@@ -125,8 +127,9 @@ export default function CustomerRestaurantSpace() {
   const { slug } = useParams();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { isPremium } = useAuth();
   
-  const [lang, setLang] = useState(searchParams.get('lang') === 'ar' ? 'ar' : 'en');
+  const { lang, setLang } = useLang();
   const [tab, setTab] = useState(searchParams.get('tab') === 'offers' ? 'offers' : 'menu');
   const [company, setCompany] = useState(null);
   const [coupons, setCoupons] = useState([]);
@@ -260,8 +263,10 @@ export default function CustomerRestaurantSpace() {
   };
 
   useEffect(() => {
-    loadCoupons();
-  }, [slug]);
+    if (isPremium) {
+      loadCoupons();
+    }
+  }, [slug, isPremium]);
 
   // Inject brand colors
   useEffect(() => {
@@ -412,6 +417,8 @@ export default function CustomerRestaurantSpace() {
       } else if (msg.includes('coupon_not_available')) {
         setClaimError(t.claimFailed);
         loadCoupons();
+      } else if (msg.includes('premium_required')) {
+        setClaimError(lang === 'ar' ? 'مطلوب عضوية بريميوم للمطالبة بهذه القسيمة.' : 'Premium subscription required to claim this coupon.');
       } else {
         setClaimError(t.claimFailed);
       }
@@ -606,52 +613,61 @@ export default function CustomerRestaurantSpace() {
         </div>
 
         {/* Navigation Tabs (Pill toggle style) */}
-        <div style={{
-          display: 'flex',
-          background: '#F3F4F6',
-          padding: '4px',
-          borderRadius: '25px',
-          gap: '4px',
-          marginBottom: '32px'
-        }}>
-          <button
-            onClick={() => setTab('menu')}
-            style={{
-              flex: 1,
-              padding: '10px 0',
-              borderRadius: '21px',
-              border: 'none',
-              fontSize: '14px',
-              fontWeight: '700',
-              cursor: 'pointer',
-              backgroundColor: tab === 'menu' ? 'var(--primary-color)' : 'transparent',
-              color: tab === 'menu' ? '#FFFFFF' : 'var(--text-soft)',
-              transition: 'all 0.2s'
-            }}
-          >
-            {t.tabMenu}
-          </button>
-          <button
-            onClick={() => setTab('offers')}
-            style={{
-              flex: 1,
-              padding: '10px 0',
-              borderRadius: '21px',
-              border: 'none',
-              fontSize: '14px',
-              fontWeight: '700',
-              cursor: 'pointer',
-              backgroundColor: tab === 'offers' ? 'var(--primary-color)' : 'transparent',
-              color: tab === 'offers' ? '#FFFFFF' : 'var(--text-soft)',
-              transition: 'all 0.2s'
-            }}
-          >
-            {t.tabOffers}
-          </button>
-        </div>
+        {isPremium && (
+          <div style={{
+            display: 'flex',
+            background: '#F3F4F6',
+            padding: '4px',
+            borderRadius: '25px',
+            gap: '4px',
+            marginBottom: '32px'
+          }}>
+            <button
+              onClick={() => setTab('menu')}
+              style={{
+                flex: 1,
+                padding: '10px 0',
+                borderRadius: '21px',
+                border: 'none',
+                fontSize: '14px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                backgroundColor: tab === 'menu' ? 'var(--primary-color)' : 'transparent',
+                color: tab === 'menu' ? '#FFFFFF' : 'var(--text-soft)',
+                transition: 'all 0.2s'
+              }}
+            >
+              {t.tabMenu}
+            </button>
+            <button
+              onClick={() => setTab('offers')}
+              style={{
+                flex: 1,
+                padding: '10px 0',
+                borderRadius: '21px',
+                border: 'none',
+                fontSize: '14px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                backgroundColor: tab === 'offers' ? 'var(--primary-color)' : 'transparent',
+                color: tab === 'offers' ? '#FFFFFF' : 'var(--text-soft)',
+                transition: 'all 0.2s'
+              }}
+            >
+              {t.tabOffers}
+            </button>
+          </div>
+        )}
 
         {/* Tab Content Rendering */}
-        {tab === 'menu' ? (
+        {!isPremium ? (
+          <>
+            <UpgradeToPremiumCard lang={lang} />
+            <div style={{ background: '#FFFFFF', borderRadius: '16px', border: '1px solid var(--border)', overflow: 'hidden' }}>
+              <PublicMenu slug={slug} isCustomerSpace={true} eligibleCouponCategories={null} />
+            </div>
+          </>
+        ) : tab === 'menu' ? (
           <div style={{ background: '#FFFFFF', borderRadius: '16px', border: '1px solid var(--border)', overflow: 'hidden' }}>
             <PublicMenu slug={slug} isCustomerSpace={true} eligibleCouponCategories={eligibleCategories} />
           </div>
