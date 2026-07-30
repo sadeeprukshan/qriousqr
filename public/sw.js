@@ -1,8 +1,12 @@
-const CACHE = 'qrious-v1';
+const CACHE = 'qrious-v3';
 const APP_SHELL = ['/', '/index.html'];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(APP_SHELL)));
+  e.waitUntil(
+    caches.open(CACHE)
+      .then((c) => c.addAll(APP_SHELL))
+      .catch(() => {})
+  );
   self.skipWaiting();
 });
 
@@ -10,33 +14,41 @@ self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
-    )
+    ).then(() => self.clients.claim())
   );
-  self.clients.claim();
+});
+
+self.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
-  // Only intercept same-origin GETs; let Supabase/CDN calls hit the network
+
   if (e.request.method !== 'GET' || url.origin !== location.origin) return;
 
-  // Network-first for HTML, cache-first for static assets
+  // Navigations: always try network, fall back to cached index.html.
+  // Do NOT cache the navigation response itself — that's what caused the
+  // stale-login bug (old SW cached a bad response for /customer/login).
   if (e.request.mode === 'navigate' || e.request.destination === 'document') {
     e.respondWith(
       fetch(e.request)
-        .then((r) => { const clone = r.clone(); caches.open(CACHE).then((c) => c.put(e.request, clone)); return r; })
-        .catch(() => caches.match(e.request).then((r) => r || caches.match('/index.html')))
+        .catch(() => caches.match('/index.html').then((r) => r || Response.error()))
     );
     return;
   }
+
+  // Static assets: cache-first, then network. Only cache hashed Vite output.
   e.respondWith(
-    caches.match(e.request).then((cached) =>
-      cached || fetch(e.request).then((r) => {
-        if (r.ok && (url.pathname.startsWith('/assets/') || url.pathname.startsWith('/icons/'))) {
-          const clone = r.clone(); caches.open(CACHE).then((c) => c.put(e.request, clone));
+    caches.match(e.request).then((cached) => {
+      if (cached) return cached;
+      return fetch(e.request).then((r) => {
+        if (r && r.ok && (url.pathname.startsWith('/assets/') || url.pathname.startsWith('/icons/'))) {
+          const clone = r.clone();
+          caches.open(CACHE).then((c) => c.put(e.request, clone)).catch(() => {});
         }
         return r;
-      })
-    )
+      }).catch(() => Response.error());
+    })
   );
 });

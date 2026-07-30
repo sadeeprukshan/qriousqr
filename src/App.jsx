@@ -39,6 +39,7 @@ const CustomerLayout = lazy(() => import('./pages/CustomerLayout.jsx'));
 const CustomerDashboard = lazy(() => import('./pages/CustomerDashboard.jsx'));
 const CustomerClaims = lazy(() => import('./pages/CustomerClaims.jsx'));
 const CustomerProfile = lazy(() => import('./pages/CustomerProfile.jsx'));
+const CustomerOrders = lazy(() => import('./pages/customer/CustomerOrders.jsx'));
 const CustomerRestaurantSpace = lazy(() => import('./pages/CustomerRestaurantSpace.jsx'));
 
 function ProtectedRoute({ children }) {
@@ -232,6 +233,7 @@ export default function App() {
             <Route element={<CustomerLayout />}>
               <Route path="/customer" element={<CustomerDashboard />} />
               <Route path="/customer/claims" element={<CustomerClaims />} />
+              <Route path="/customer/orders" element={<CustomerOrders />} />
               <Route path="/customer/profile" element={<CustomerProfile />} />
               <Route path="/customer/restaurant/:slug" element={<CustomerRestaurantSpace />} />
               <Route path="/customer/menu/:slug" element={<CustomerRestaurantSpace />} />

@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useLang } from '../context/LanguageContext.jsx';
+import { customerActiveOrdersCount } from '../services/orderService.js';
+import { supabase, isMockMode } from '../supabaseClient.js';
 
 function HomeIcon({ filled }) {
   return (
@@ -21,6 +23,16 @@ function TicketIcon({ filled }) {
   );
 }
 
+function BagIcon({ filled }) {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
+      <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+      <line x1="3" y1="6" x2="21" y2="6" />
+      <path d="M16 10a4 4 0 0 1-8 0" />
+    </svg>
+  );
+}
+
 function UserIcon({ filled }) {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
@@ -36,11 +48,67 @@ export default function CustomerNavIsland() {
   const { isPremium } = useAuth();
   const { lang } = useLang();
   const isRtl = lang === 'ar';
+  
+  const [activeOrdersCount, setActiveOrdersCount] = useState(0);
+
+  const fetchActiveCount = async () => {
+    try {
+      const cnt = await customerActiveOrdersCount();
+      setActiveOrdersCount(cnt);
+    } catch (e) {
+      console.error('Error fetching customer active orders count:', e);
+    }
+  };
+
+  useEffect(() => {
+    fetchActiveCount();
+
+    let channel = null;
+    try {
+      const session = JSON.parse(localStorage.getItem('qriousqr:mock_customer_session') || '{}');
+      const customerId = session?.user?.id;
+      
+      if (customerId || !isMockMode) {
+        channel = supabase
+          .channel(`customer_nav_orders`)
+          .on('postgres_changes',
+            { event: '*', schema: 'public', table: 'orders' },
+            (payload) => {
+              fetchActiveCount();
+            })
+          .subscribe();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+
+    const handleFocus = () => {
+      fetchActiveCount();
+    };
+    window.addEventListener('focus', handleFocus);
+
+    const handleStorage = (e) => {
+      if (e.key === 'qriousqr:mock_orders') {
+        fetchActiveCount();
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      if (channel) {
+        try { supabase.removeChannel(channel); } catch (e) {}
+      }
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, []);
 
   const pathname = location.pathname;
   let activeTab = 'home';
   if (pathname.startsWith('/customer/claims')) {
     activeTab = 'coupons';
+  } else if (pathname.startsWith('/customer/orders')) {
+    activeTab = 'orders';
   } else if (pathname.startsWith('/customer/profile')) {
     activeTab = 'profile';
   }
@@ -61,6 +129,13 @@ export default function CustomerNavIsland() {
       label: isRtl ? 'قسائمي' : 'Coupons',
       route: '/customer/claims',
       icon: (filled) => <TicketIcon filled={filled} />
+    },
+    {
+      key: 'orders',
+      label: isRtl ? 'طلباتي' : 'Orders',
+      route: '/customer/orders',
+      icon: (filled) => <BagIcon filled={filled} />,
+      badge: activeOrdersCount
     },
     {
       key: 'profile',
@@ -88,7 +163,7 @@ export default function CustomerNavIsland() {
       alignItems: 'center',
       gap: '4px',
       zIndex: 900,
-      width: isPremium ? '280px' : '190px',
+      width: isPremium ? '320px' : '240px',
       border: '1px solid rgba(255, 255, 255, 0.7)'
     }}>
       {navItems.map((item) => {
@@ -116,7 +191,31 @@ export default function CustomerNavIsland() {
               fontFamily: isRtl ? 'var(--font-ar)' : 'var(--font-en)'
             }}
           >
-            {item.icon(isActive)}
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {item.icon(isActive)}
+              {item.badge > 0 && (
+                <span style={{
+                  position: 'absolute',
+                  top: '-4px',
+                  right: '-6px',
+                  backgroundColor: '#FF5722',
+                  color: '#FFFFFF',
+                  borderRadius: '50%',
+                  minWidth: '14px',
+                  height: '14px',
+                  fontSize: '9px',
+                  fontWeight: '800',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '1px',
+                  boxSizing: 'border-box',
+                  boxShadow: '0 0 0 1.5px #FFF'
+                }}>
+                  {item.badge}
+                </span>
+              )}
+            </div>
             <span style={{ fontSize: '10px', fontWeight: isActive ? '600' : '500', letterSpacing: isRtl ? '0' : '0.2px' }}>
               {item.label}
             </span>

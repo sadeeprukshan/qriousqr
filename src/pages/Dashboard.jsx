@@ -34,6 +34,8 @@ import {
 } from '../services/teamService.js';
 import QrTab from './dashboard/QrTab.jsx';
 import OperatorConsoleTab from './dashboard/OperatorConsoleTab.jsx';
+import OrdersTab from './dashboard/OrdersTab.jsx';
+import { operatorOrdersList } from '../services/orderService.js';
 import FileInput from '../components/FileInput.jsx';
 import LineChart from '../components/LineChart.jsx';
 import BarChart from '../components/BarChart.jsx';
@@ -123,6 +125,7 @@ export default function Dashboard() {
   const { canInstall, prompt: installPrompt } = useInstallPrompt();
   
   const [activeTab, setActiveTab] = useState('profile');
+  const [activeOrdersCount, setActiveOrdersCount] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   // Database Data States
@@ -320,6 +323,56 @@ export default function Dashboard() {
   const isStaff = activeRole === 'staff';
   const isSuspended = company && company.status === 'suspended';
   const isLocked = isStaff || isSuspended;
+
+  const refreshActiveOrdersCount = async () => {
+    if (!company?.id) return;
+    try {
+      const activeList = await operatorOrdersList(['pending', 'ready']);
+      setActiveOrdersCount(activeList.length);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    if (!company?.id) return;
+
+    refreshActiveOrdersCount();
+
+    let channel = null;
+    try {
+      channel = supabase
+        .channel(`orders_count:${company.id}`)
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'orders', filter: `company_id=eq.${company.id}` },
+          (payload) => {
+            refreshActiveOrdersCount();
+          })
+        .subscribe();
+    } catch (err) {
+      console.error('Realtime orders count subscription failed:', err);
+    }
+
+    const handleFocus = () => {
+      refreshActiveOrdersCount();
+    };
+    window.addEventListener('focus', handleFocus);
+
+    const handleStorage = (e) => {
+      if (e.key === 'qriousqr:mock_orders') {
+        refreshActiveOrdersCount();
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      if (channel) {
+        try { supabase.removeChannel(channel); } catch (e) {}
+      }
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, [company?.id]);
 
   // Load dashboard data when currentCompanyId changes
   useEffect(() => {
@@ -1372,6 +1425,32 @@ export default function Dashboard() {
               <path d="M17 5v10" />
             </svg>
             <span>Operator</span>
+          </button>
+
+          <button 
+            className={`nav-item ${activeTab === 'orders' ? 'active' : ''}`}
+            onClick={() => setActiveTab('orders')}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <path d="M16 10a4 4 0 0 1-8 0" />
+            </svg>
+            <span>Orders</span>
+            {activeOrdersCount > 0 && (
+              <span className="badge-count-sidebar" style={{
+                marginLeft: 'auto',
+                backgroundColor: 'var(--primary-color, #FF5722)',
+                color: '#FFFFFF',
+                borderRadius: '10px',
+                padding: '2px 8px',
+                fontSize: '11px',
+                fontWeight: '800',
+                lineHeight: 1
+              }}>
+                {activeOrdersCount}
+              </span>
+            )}
           </button>
 
           <button 
@@ -2466,6 +2545,11 @@ export default function Dashboard() {
           {/* OPERATOR TAB */}
           {activeTab === 'operator' && (
             <OperatorConsoleTab company={company} />
+          )}
+
+          {/* ORDERS TAB */}
+          {activeTab === 'orders' && (
+            <OrdersTab company={company} branches={branches} />
           )}
 
           {/* QR CODE TAB */}

@@ -343,6 +343,52 @@ export default function CustomerProfile() {
         {t.title}
       </h2>
 
+      {/* PIN Card */}
+      <div style={{
+        background: '#FAF8F5',
+        border: '1px solid var(--border)',
+        borderRadius: '16px',
+        padding: '24px',
+        textAlign: 'center',
+        marginBottom: '24px'
+      }}>
+        <h4 style={{ margin: '0 0 6px 0', fontSize: '15px', fontWeight: '800', color: 'var(--text)' }}>
+          {t.pinTitle}
+        </h4>
+        <p style={{ margin: '0 0 16px 0', fontSize: '12px', color: 'var(--text-soft)' }}>
+          {t.pinSub}
+        </p>
+        <div style={{
+          background: '#FFFFFF',
+          border: '1px solid var(--border)',
+          borderRadius: '8px',
+          padding: '12px',
+          fontFamily: 'monospace',
+          fontSize: '22px',
+          fontWeight: '700',
+          letterSpacing: '2px',
+          color: 'var(--text)',
+          marginBottom: '16px'
+        }}>
+          {formattedPin}
+        </div>
+        <button
+          onClick={handleCopyPin}
+          style={{
+            padding: '8px 16px',
+            borderRadius: '6px',
+            border: '1px solid var(--border)',
+            backgroundColor: '#FFFFFF',
+            fontSize: '12px',
+            fontWeight: '700',
+            cursor: 'pointer',
+            color: 'var(--text)'
+          }}
+        >
+          {copied ? t.copied : t.copy}
+        </button>
+      </div>
+
       {/* Main Form Card */}
       <form onSubmit={handleSave} style={{
         background: '#FFFFFF',
@@ -711,52 +757,6 @@ export default function CustomerProfile() {
           </div>
         )}
       </form>
-
-      {/* PIN Card */}
-      <div style={{
-        background: '#FAF8F5',
-        border: '1px solid var(--border)',
-        borderRadius: '16px',
-        padding: '24px',
-        textAlign: 'center',
-        marginBottom: '32px'
-      }}>
-        <h4 style={{ margin: '0 0 6px 0', fontSize: '15px', fontWeight: '800', color: 'var(--text)' }}>
-          {t.pinTitle}
-        </h4>
-        <p style={{ margin: '0 0 16px 0', fontSize: '12px', color: 'var(--text-soft)' }}>
-          {t.pinSub}
-        </p>
-        <div style={{
-          background: '#FFFFFF',
-          border: '1px solid var(--border)',
-          borderRadius: '8px',
-          padding: '12px',
-          fontFamily: 'monospace',
-          fontSize: '22px',
-          fontWeight: '700',
-          letterSpacing: '2px',
-          color: 'var(--text)',
-          marginBottom: '16px'
-        }}>
-          {formattedPin}
-        </div>
-        <button
-          onClick={handleCopyPin}
-          style={{
-            padding: '8px 16px',
-            borderRadius: '6px',
-            border: '1px solid var(--border)',
-            backgroundColor: '#FFFFFF',
-            fontSize: '12px',
-            fontWeight: '700',
-            cursor: 'pointer',
-            color: 'var(--text)'
-          }}
-        >
-          {copied ? t.copied : t.copy}
-        </button>
-      </div>
 
       {/* Divider */}
       <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '24px 0' }} />
