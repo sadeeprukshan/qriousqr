@@ -15,6 +15,8 @@ class QInput extends StatelessWidget {
   final Widget? prefixIcon;
   final bool readOnly;
   final String? initialValue;
+  final bool? enabled;
+  final int? maxLength;
 
   const QInput({
     super.key,
@@ -29,6 +31,8 @@ class QInput extends StatelessWidget {
     this.prefixIcon,
     this.readOnly = false,
     this.initialValue,
+    this.enabled,
+    this.maxLength,
   });
 
   @override
@@ -54,6 +58,8 @@ class QInput extends StatelessWidget {
           keyboardType: keyboardType,
           onChanged: onChanged,
           readOnly: readOnly,
+          enabled: enabled,
+          maxLength: maxLength,
           style: const TextStyle(
             fontSize: 15,
             color: QColors.text,
