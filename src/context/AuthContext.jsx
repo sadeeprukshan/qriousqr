@@ -435,6 +435,20 @@ export function AuthProvider({ children }) {
         if (!data.user) throw new Error('Sign up failed');
 
         if (!inviteToken && slug) {
+          // Defense-in-depth: check for a pending invite matching this email BEFORE creating a new tenant.
+          const { data: pending } = await supabase
+            .from('company_invites')
+            .select('id, token, company_id')
+            .eq('email', email.toLowerCase())
+            .is('accepted_at', null)
+            .gte('expires_at', new Date().toISOString())
+            .limit(1);
+          if (pending && pending.length > 0) {
+            throw new Error(
+              `You have a pending team invitation. Please open the invite link from your email instead of registering a new restaurant. If you can't find it, contact the person who invited you to resend.`
+            );
+          }
+
           const { error: rpcErr } = await supabase.rpc('register_tenant', {
             p_email: email,
             p_slug: slug,

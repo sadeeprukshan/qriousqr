@@ -56,6 +56,7 @@ export async function operatorCreateOrder(customerPin, branchId = null) {
       customer_id: customer.id || 'mock-customer-id',
       customer_first_name: customer.first_name,
       customer_last_name: customer.last_name,
+      customer_phone_full: customer.phone_full,
       status: 'pending',
       otp: otpCode,
       created_at: new Date().toISOString(),
@@ -74,6 +75,7 @@ export async function operatorCreateOrder(customerPin, branchId = null) {
       otp: otpCode,
       customer_first_name: customer.first_name,
       customer_last_name: customer.last_name,
+      customer_phone_full: customer.phone_full,
       created_at: newOrder.created_at
     };
   }

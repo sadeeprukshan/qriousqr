@@ -112,9 +112,60 @@ export default function AuthPage() {
   }, [searchParams]);
 
   useEffect(() => {
-    const isRecovery = window.location.hash.includes('type=recovery') || searchParams.get('mode') === 'reset';
+    const url = new URL(window.location.href);
+    const hash = url.hash || '';
+    const isRecovery =
+      hash.includes('type=recovery') ||       // legacy implicit flow
+      url.searchParams.get('mode') === 'reset' || // our own hint
+      (url.searchParams.get('code') && url.searchParams.get('mode') === 'reset'); // PKCE reset callback
     setIsResetMode(isRecovery);
   }, [searchParams]);
+
+  useEffect(() => {
+    if (isMockMode) return;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      // Supabase fires PASSWORD_RECOVERY when a recovery session is established.
+      // We keep the user on this page until they submit a new password.
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsResetMode(true);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (isMockMode) return;
+    const code = searchParams.get('code');
+    if (!code) return;
+
+    (async () => {
+      try {
+        // Supabase's detectSessionInUrl:true auto-exchanges on init. If that
+        // already succeeded, calling exchangeCodeForSession again fails as
+        // "code already used" — swallow it, we're good.
+        const { data: existing } = await supabase.auth.getSession();
+        if (existing?.session) {
+          setIsResetMode(true);
+          return;
+        }
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) {
+          // If the auto-exchange raced and won, session should now be present.
+          const { data: retry } = await supabase.auth.getSession();
+          if (retry?.session) {
+            setIsResetMode(true);
+            return;
+          }
+          console.error('exchangeCodeForSession failed', error);
+          setErrorMsg('This reset link has expired or was already used. Please request a new one.');
+        } else {
+          setIsResetMode(true);
+        }
+      } catch (err) {
+        console.error('exchange threw', err);
+      }
+    })();
+  }, []); // once
 
   // Auth redirect guards
   useEffect(() => {

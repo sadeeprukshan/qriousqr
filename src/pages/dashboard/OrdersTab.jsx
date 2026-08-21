@@ -9,6 +9,7 @@ import {
 } from '../../services/orderService.js';
 import OrderStatusPill from '../../components/OrderStatusPill.jsx';
 import QSuccessToast from '../../components/QSuccessToast.jsx';
+import { openWhatsAppHandoff, normalizePhone, buildMessage } from '../../lib/whatsappHandoff.js';
 
 // Audio ping generator for new orders
 const playPing = () => {
@@ -183,15 +184,46 @@ export default function OrdersTab({ company, branches }) {
 
   // Mark order ready
   const handleMarkReady = async (orderId, orderNum) => {
+    let waTab = null;
+    try { waTab = window.open('about:blank', '_blank', 'noopener,noreferrer'); } catch (e) {}
+
     try {
       // Optimistic update
       setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'ready', ready_at: new Date().toISOString() } : o));
       
-      await operatorMarkReady(orderId);
+      const result = await operatorMarkReady(orderId);
+      // result now includes: customer_phone_full, customer_first_name, customer_last_name, otp
+
       setToastMessage(`Order #${orderNum} marked as Prepared & Ready`);
       setToastVisible(true);
+
+      const phone = normalizePhone(result?.customer_phone_full);
+      if (waTab && phone) {
+        const text = buildMessage({
+          companyName: company?.name_en || company?.name || 'QriousQR',
+          orderNumber: result?.order_number || orderNum,
+          otp: result?.otp,
+          pickupUrl: `${window.location.origin}/customer/orders`
+        });
+        waTab.location.href = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+        
+        setTimeout(() => {
+          setToastMessage(`WhatsApp opened for customer. Tap SEND to notify.`);
+          setToastVisible(true);
+        }, 1200);
+      } else {
+        if (waTab) waTab.close();
+        if (!phone) {
+          setTimeout(() => {
+            setToastMessage(`Order marked ready. Customer has no phone on file — in-app notification only.`);
+            setToastVisible(true);
+          }, 1200);
+        }
+      }
+
       loadOrders();
     } catch (err) {
+      if (waTab) waTab.close();
       console.error(err);
     }
   };
@@ -557,6 +589,36 @@ export default function OrdersTab({ company, branches }) {
 
                       {order.status === 'ready' && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <button
+                            type="button"
+                            onClick={() => openWhatsAppHandoff({
+                              customerPhoneFull: order.customer_phone_full,
+                              companyName: company?.name_en || company?.name || 'QriousQR',
+                              orderNumber: order.order_number,
+                              otp: order.otp,
+                              pickupUrl: `${window.location.origin}/customer/orders`,
+                            })}
+                            title="Re-send WhatsApp"
+                            style={{
+                              border: '1px solid #25D366',
+                              background: '#FFFFFF',
+                              color: '#25D366',
+                              borderRadius: '6px',
+                              padding: '6px 10px',
+                              fontSize: '12px',
+                              fontWeight: '700',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.225 8.225 0 0 1 2.41 5.83c0 4.54-3.7 8.23-8.24 8.23-1.48 0-2.93-.39-4.19-1.15l-.3-.17-3.12.82.83-3.04-.2-.32a8.188 8.188 0 0 1-1.26-4.38c.01-4.54 3.7-8.24 8.25-8.24M8.53 7.33c-.16 0-.43.06-.66.31-.22.25-.87.86-.87 2.07 0 1.22.89 2.39 1 2.56.14.17 1.76 2.67 4.25 3.73.59.27 1.05.42 1.41.53.59.19 1.13.16 1.56.1.48-.07 1.46-.6 1.67-1.18.21-.58.21-1.07.15-1.18-.07-.1-.23-.16-.48-.27-.25-.14-1.47-.74-1.69-.82-.23-.08-.37-.12-.56.12-.16.25-.64.81-.78.97-.15.17-.29.19-.53.07-.26-.13-1.06-.39-2-1.23-.74-.66-1.23-1.47-1.38-1.72-.12-.24-.01-.39.11-.5.11-.11.27-.29.37-.44.13-.14.17-.25.25-.41.08-.17.04-.31-.02-.43-.06-.11-.56-1.35-.77-1.84-.2-.48-.4-.42-.56-.43-.14 0-.3-.01-.47-.01"/>
+                            </svg>
+                            <span>WhatsApp</span>
+                          </button>
+                          
                           <button
                             onClick={() => {
                               setOtpOrder(order);

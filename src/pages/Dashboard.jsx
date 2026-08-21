@@ -2055,6 +2055,29 @@ export default function Dashboard() {
                     <span>Do not display publicly. Do not share on social media.</span>
                   </div>
                 </div>
+
+                {/* WhatsApp Onboarding Note */}
+                <div style={{
+                  marginTop: '24px',
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid var(--border)',
+                  borderRadius: '12px',
+                  padding: '24px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.01)',
+                  boxSizing: 'border-box'
+                }}>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                    <span style={{ fontSize: '20px' }}>💬</span>
+                    <div>
+                      <h4 style={{ margin: '0 0 6px 0', fontSize: '15px', fontWeight: '800', color: 'var(--text)' }}>
+                        WhatsApp Branding / <span style={{ fontFamily: 'var(--font-ar)' }}>تخصيص الواتساب</span>
+                      </h4>
+                      <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-soft)', lineHeight: '1.5' }}>
+                        For your restaurant logo to appear on WhatsApp order notifications, set your logo as the profile picture on the WhatsApp Business account used on your restaurant's tablet/phone. This uses no API — messages are sent from your device when the operator taps Prepared.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}

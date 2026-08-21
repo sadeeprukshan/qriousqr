@@ -21,10 +21,41 @@ export default function InviteAccept() {
 
   // Detect invite session hash on mount before SDK strips it
   useEffect(() => {
-    if (window.location.hash.includes('type=invite')) {
+    const hash = window.location.hash || '';
+    const hasHashInvite = hash.includes('type=invite');
+    const hasPkceCode = new URLSearchParams(window.location.search).has('code');
+    if (hasHashInvite || hasPkceCode) {
       setIsInviteSession(true);
     }
   }, []);
+
+  // Explicitly exchange the PKCE code (skip if Supabase's auto-exchange already succeeded)
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get('code');
+    if (!code) return;
+    (async () => {
+      try {
+        const { data: existing } = await supabase.auth.getSession();
+        if (existing?.session) return; // auto-exchange won the race — we're good
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) {
+          const { data: retry } = await supabase.auth.getSession();
+          if (retry?.session) return; // auto-exchange won after all
+          console.error('invite exchange failed', error);
+          setErrorMsg('This invite link has expired or was already used. Ask the restaurant to resend it.');
+        }
+      } catch (err) {
+        console.error('invite exchange threw', err);
+      }
+    })();
+  }, []); // once
+
+  // Confirm invited user has proper metadata
+  useEffect(() => {
+    if (user?.user_metadata?.invite_token === token) {
+      setIsInviteSession(true);
+    }
+  }, [user, token]);
 
   // 1. Load invite by token on mount
   useEffect(() => {

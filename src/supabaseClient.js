@@ -7,4 +7,11 @@ export const isMockMode = !url || !key;
 
 export const supabase = isMockMode
   ? null
-  : createClient(url, key);
+  : createClient(url, key, {
+      auth: {
+        flowType: 'pkce',
+        detectSessionInUrl: true,
+        persistSession: true,
+        autoRefreshToken: true,
+      },
+    });

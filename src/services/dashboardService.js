@@ -69,11 +69,14 @@ export async function getCompany(userId, slug) {
     const data = getMockData(slug);
     return data ? data.company : null;
   }
+  // Query by slug (RLS "Companies visible" allows any company member — owner,
+  // manager, staff — to SELECT). Filtering by owner_id used to lock out
+  // non-owners with a 406 and crash the Dashboard on comp.theme_color.
   const { data, error } = await supabase
     .from('companies')
     .select('*')
-    .eq('owner_id', userId)
-    .single();
+    .eq('slug', slug)
+    .maybeSingle();
   if (error) {
     console.error('Error loading company profile:', error);
     return null;
