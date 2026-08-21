@@ -234,12 +234,10 @@ export default function ProductDetail() {
       {/* Hero Image Section */}
       <div className="detail-hero">
         {product.image_url ? (
-          <img 
-            src={getTransformedUrl(product.image_url, 800, 500)} 
-            alt={name} 
-            className="detail-hero-img" 
-            width={800}
-            height={500}
+          <img
+            src={getTransformedUrl(product.image_url, 1000)}
+            alt={name}
+            className="detail-hero-img"
             loading="eager"
             fetchpriority="high"
             decoding="async"
