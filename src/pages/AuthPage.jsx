@@ -98,6 +98,12 @@ export default function AuthPage() {
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [isEmailConfirmSent, setIsEmailConfirmSent] = useState(false);
   const [joinedCompany, setJoinedCompany] = useState('');
+  // Track PKCE code-exchange so we don't auto-redirect the user away from
+  // /auth before their recovery session is established.
+  const [codeExchangePending, setCodeExchangePending] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return new URLSearchParams(window.location.search).has('code');
+  });
 
   useEffect(() => {
     const joined = searchParams.get('joined');
@@ -163,12 +169,19 @@ export default function AuthPage() {
         }
       } catch (err) {
         console.error('exchange threw', err);
+      } finally {
+        setCodeExchangePending(false);
       }
     })();
   }, []); // once
 
   // Auth redirect guards
   useEffect(() => {
+    // Do not redirect while a PKCE code exchange is still in progress —
+    // otherwise a recovery link (?code=xxx&mode=reset) races: session
+    // gets set, this effect fires, and bounces the user to /dashboard
+    // before the reset form ever renders.
+    if (codeExchangePending) return;
     // Do not redirect while completing a password recovery — the user needs
     // to stay on this page long enough to enter a new password.
     if (isResetMode) return;
@@ -180,7 +193,7 @@ export default function AuthPage() {
         navigate(inviteToken ? `/invite/${inviteToken}` : '/dashboard', { replace: true });
       }
     }
-  }, [user, isSuperAdmin, navigate, inviteToken, isResetMode]);
+  }, [user, isSuperAdmin, navigate, inviteToken, isResetMode, codeExchangePending]);
 
   // Form Fields
   const [email, setEmail] = useState('');

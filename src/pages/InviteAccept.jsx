@@ -18,6 +18,14 @@ export default function InviteAccept() {
   const [submitting, setSubmitting] = useState(false);
   const [isInviteSession, setIsInviteSession] = useState(false);
   const [success, setSuccess] = useState(false);
+  // Track whether we are still finishing the PKCE code exchange. Starts true
+  // if the URL has a ?code=; flips to false once the exchange resolves. This
+  // prevents the render from flashing the "Sign In" fallback while the
+  // session is still being established.
+  const [codeExchangePending, setCodeExchangePending] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return new URLSearchParams(window.location.search).has('code');
+  });
 
   // Detect invite session hash on mount before SDK strips it
   useEffect(() => {
@@ -46,6 +54,8 @@ export default function InviteAccept() {
         }
       } catch (err) {
         console.error('invite exchange threw', err);
+      } finally {
+        setCodeExchangePending(false);
       }
     })();
   }, []); // once
@@ -138,7 +148,7 @@ export default function InviteAccept() {
 
   // --- render ---
 
-  if (loading || authLoading) {
+  if (loading || authLoading || codeExchangePending) {
     return (
       <div className="invite-page-shell">
         <div className="invite-card loading-card">
