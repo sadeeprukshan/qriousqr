@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { getInviteByToken, acceptInvite } from '../services/teamService.js';
 import { validateNewPassword } from '../lib/passwordRules.js';
+import InviteMagicLinkCard from '../components/InviteMagicLinkCard.jsx';
 
 export default function InviteAccept() {
   const { token } = useParams();
@@ -184,32 +185,7 @@ export default function InviteAccept() {
   if (!user) {
     return (
       <div className="invite-page-shell">
-        <div className="invite-card">
-          <div className="invite-icon-banner">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" strokeWidth="2.5">
-              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-              <circle cx="9" cy="7" r="4" />
-              <line x1="19" y1="8" x2="19" y2="14" />
-              <line x1="22" y1="11" x2="16" y2="11" />
-            </svg>
-          </div>
-          <h2>Join {companyName}</h2>
-          <p className="invite-text-desc">
-            You've been invited as <span className="invite-role-highlight">{invite.role}</span>.
-          </p>
-          <p className="invite-auth-label">
-            This invite was sent to <strong>{invite.email}</strong>. Sign in with that account to accept:
-          </p>
-          <div className="invite-auth-buttons">
-            <Link
-              to={`/auth?mode=login&email=${encodeURIComponent(invite.email)}&invite=${token}`}
-              className="btn-submit-auth invite-btn"
-              style={{ textAlign: 'center', display: 'block', textDecoration: 'none' }}
-            >
-              Sign In
-            </Link>
-          </div>
-        </div>
+        <InviteMagicLinkCard email={invite.email} token={token} companyName={companyName} />
       </div>
     );
   }

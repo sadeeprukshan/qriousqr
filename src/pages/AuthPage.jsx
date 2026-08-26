@@ -4,6 +4,8 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { supabase, isMockMode } from '../supabaseClient.js';
 import { emailExists } from '../services/adminService.js';
 import { validateNewPassword } from '../lib/passwordRules.js';
+import { getInviteByToken } from '../services/teamService.js';
+import InviteMagicLinkCard from '../components/InviteMagicLinkCard.jsx';
 
 const COUNTRIES = [
   // MENA (already supported)
@@ -104,6 +106,29 @@ export default function AuthPage() {
     if (typeof window === 'undefined') return false;
     return new URLSearchParams(window.location.search).has('code');
   });
+
+  const [inviteData, setInviteData] = useState(null);
+  const [loadingInvite, setLoadingInvite] = useState(false);
+
+  useEffect(() => {
+    if (!inviteToken) return;
+    let cancelled = false;
+    (async () => {
+      setLoadingInvite(true);
+      try {
+        const data = await getInviteByToken(inviteToken);
+        if (cancelled) return;
+        if (data) {
+          setInviteData(data);
+        }
+      } catch (err) {
+        console.error('Error loading invite in AuthPage:', err);
+      } finally {
+        if (!cancelled) setLoadingInvite(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [inviteToken]);
 
   useEffect(() => {
     const joined = searchParams.get('joined');
@@ -557,6 +582,13 @@ export default function AuthPage() {
               </div>
             </form>
           </>
+        ) : loadingInvite ? (
+          <div style={{ textAlign: 'center', padding: '40px 0' }}>
+            <div className="spinner" style={{ margin: '0 auto 16px auto' }}></div>
+            <p style={{ color: 'var(--text-soft)' }}>Loading invitation details…</p>
+          </div>
+        ) : (inviteToken && inviteData) ? (
+          <InviteMagicLinkCard email={inviteData.invite?.email || inviteEmail} token={inviteToken} companyName={inviteData.companyName} />
         ) : (
           <>
             {/* Tab Swapper */}
