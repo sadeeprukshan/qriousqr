@@ -1,4 +1,4 @@
-const CACHE = 'qrious-v4';
+const CACHE = 'qrious-v5';
 const APP_SHELL = ['/', '/index.html'];
 
 self.addEventListener('install', (e) => {
@@ -64,21 +64,24 @@ self.addEventListener('push', (event) => {
     tag: data.tag || 'qrious-push',
     renotify: data.renotify !== false,
     requireInteraction: !!data.requireInteraction,
-    vibrate: data.vibrate || [200, 100, 200, 100, 200],
+    silent: false, // use the phone's notification sound
+    vibrate: data.vibrate || [300, 100, 300, 100, 300, 100, 600],
     data: data.data || {},
   };
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
+// Tapping the notification opens (or focuses) the order tracker page
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const url = (event.notification.data && event.notification.data.url) || '/';
+  const path = (event.notification.data && event.notification.data.url) || '/';
+  const target = new URL(path, self.location.origin).href;
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
       for (const client of windowClients) {
-        if (client.url.includes(url) && 'focus' in client) return client.focus();
+        if (client.url === target && 'focus' in client) return client.focus();
       }
-      if (self.clients.openWindow) return self.clients.openWindow(url);
+      return self.clients.openWindow ? self.clients.openWindow(target) : undefined;
     })
   );
 });
