@@ -3,12 +3,8 @@ import { useParams } from 'react-router-dom';
 import { useLang } from '../context/LanguageContext.jsx';
 import { supabase, isMockMode } from '../supabaseClient.js';
 import { trackQuickOrder } from '../services/quickOrderService.js';
-import {
-  isPushSupported,
-  isIOSSafari,
-  ensureServiceWorker,
-  subscribeForOrder,
-} from '../lib/webPush.js';
+import { isPushSupported, subscribeForOrder } from '../lib/webPush.js';
+import { createTrackingSession } from '../lib/mediaSession.js';
 import QSuccessToast from '../components/QSuccessToast.jsx';
 
 const T = {
@@ -25,26 +21,15 @@ const T = {
     deliveredSub: 'Thank you for visiting!',
     cancelledTitle: 'Order cancelled',
     cancelledReasonPrefix: 'Reason: ',
-    enableAlertsBtn: '🔔 Enable Alerts',
-    enableAlertsSub: "Get a buzz on your phone's lock screen when your order is ready.",
-    enablingAlerts: 'Enabling alerts…',
-    alertsOnChip: '✓ Alerts on for this device',
+    enableAlertsBtn: '🔔 Enable Lock-Screen Alerts',
+    enableAlertsSub: "Shows your order status on your phone's lock screen, like a music player. Keep this tab open.",
+    enablingAlerts: 'Starting…',
+    alertsOnChip: '✓ Alerts on — lock your phone',
+    alertsOnSub: 'Your order status will appear on the lock screen. We will chime and vibrate when it is ready.',
     turnOff: 'Turn off',
-    allSetToast: "You're all set — put your phone away!",
+    allSetToast: "You're all set — lock your phone and keep this tab open.",
     readyBanner: '✓ Your order is READY',
-    unsupportedNotice:
-      "Your browser can't buzz your phone's lock screen. Keep this page open — we'll make noise and show a big banner when your order is ready.",
-    errPermissionDenied:
-      'Notification permission was blocked. Please allow notifications in your browser settings or keep this page open.',
-    errVapidMissing:
-      'Push alerts are being configured. Please keep this page open — we will alert you right here!',
     errGeneric: 'Could not enable lock-screen alerts. Keep this page open to see live updates.',
-    iosTitle: 'Add to Home Screen First',
-    iosDesc: 'To get buzz-on-lock-screen alerts on iPhone, add this page to your Home Screen first.',
-    iosStep1: '1. Tap the 📤 Share icon at the bottom of Safari',
-    iosStep2: '2. Scroll down and tap ➕ Add to Home Screen',
-    iosStep3: '3. Open the app from your Home Screen and tap Enable Alerts',
-    iosDismiss: 'Got it',
     poweredBy: 'Powered by QriousQR',
     langToggle: 'العربية',
   },
@@ -61,25 +46,15 @@ const T = {
     deliveredSub: 'شكراً لزيارتكم!',
     cancelledTitle: 'تم إلغاء الطلب',
     cancelledReasonPrefix: 'السبب: ',
-    enableAlertsBtn: '🔔 تفعيل التنبيهات',
-    enableAlertsSub: 'احصل على اهتزاز وتنبيه على شاشة القفل عندما يصبح طلبك جاهزاً.',
+    enableAlertsBtn: '🔔 تفعيل تنبيهات شاشة القفل',
+    enableAlertsSub: 'ستظهر حالة طلبك على شاشة القفل كما في مشغّل الموسيقى. أبقِ هذا التبويب مفتوحاً.',
     enablingAlerts: 'جاري التفعيل…',
-    alertsOnChip: '✓ التنبيهات مفعّلة لهذا الجهاز',
+    alertsOnChip: '✓ التنبيهات مفعّلة — يمكنك قفل هاتفك',
+    alertsOnSub: 'ستظهر حالة طلبك على شاشة القفل. سنصدر صوتاً واهتزازاً فور جهوزيته.',
     turnOff: 'إيقاف',
-    allSetToast: 'تم التفعيل بنجاح — يمكنك قفل هاتفك الآن!',
+    allSetToast: 'تم التفعيل — اقفل هاتفك وأبقِ هذا التبويب مفتوحاً.',
     readyBanner: '✓ طلبك جاهز للاستلام الآن',
-    unsupportedNotice:
-      'متصفحك لا يدعم تنبيهات شاشة القفل. أبقِ هذه الصفحة مفتوحة — سنصدر صوتاً وإشعاراً واضحاً فور جهوزية طلبك.',
-    errPermissionDenied:
-      'تم حظر إذن الإشعارات. يرجى السماح بالإشعارات من إعدادات المتصفح أو إبقاء هذه الصفحة مفتوحة.',
-    errVapidMissing: 'يتم تهيئة تنبيهات الدفع. يرجى إبقاء هذه الصفحة مفتوحة وسننبهك هنا مباشرة!',
-    errGeneric: 'تعذر تفعيل تنبيهات شاشة القفل. أبقِ هذه الصفحة مفتوحة لمتابعة حالة الطلب.',
-    iosTitle: 'أضف الصفحة إلى الشاشة الرئيسية أولاً',
-    iosDesc: 'للحصول على تنبيهات شاشة القفل على iPhone، أضف هذه الصفحة إلى الشاشة الرئيسية أولاً.',
-    iosStep1: '1. اضغط على أيقونة المشاركة 📤 في أسفل متصفح Safari',
-    iosStep2: '2. مرر لأسفل واضغط على ➕ إضافة إلى الصفحة الرئيسية',
-    iosStep3: '3. افتح الصفحة من شاشتك الرئيسية واضغط على تفعيل التنبيهات',
-    iosDismiss: 'حسناً',
+    errGeneric: 'تعذر تفعيل التنبيهات. أبقِ هذه الصفحة مفتوحة لمتابعة حالة الطلب.',
     poweredBy: 'مشغّل بواسطة QriousQR',
     langToggle: 'English',
   },
@@ -115,11 +90,10 @@ export default function QuickOrderTracker() {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Push states
+  // Alert state (Media Session + optional bonus Web Push on Android)
   const [subscribed, setSubscribed] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
   const [pushError, setPushError] = useState('');
-  const [showIOSOverlay, setShowIOSOverlay] = useState(false);
 
   // Toast & Ready Banner states
   const [toastMessage, setToastMessage] = useState('');
@@ -128,32 +102,18 @@ export default function QuickOrderTracker() {
 
   const prevStatusRef = useRef(null);
   const bannerTimerRef = useRef(null);
+  const sessionRef = useRef(null);
+  if (!sessionRef.current) sessionRef.current = createTrackingSession();
 
-  const { iOS, standalone } = isIOSSafari();
-  const needsIOSHomeScreen = iOS && !standalone;
-  const pushSupported = isPushSupported() || needsIOSHomeScreen;
-
-  // Check if browser already has an active subscription on mount
+  // Tear down the Media Session when the tracker unmounts
   useEffect(() => {
-    if (!isPushSupported()) return;
-    (async () => {
-      try {
-        const reg = await navigator.serviceWorker.getRegistration();
-        if (reg && reg.pushManager) {
-          const existing = await reg.pushManager.getSubscription();
-          if (existing && Notification.permission === 'granted') {
-            // Ensure this order's qrToken is registered for this device subscription
-            try {
-              await subscribeForOrder(qrToken);
-              setSubscribed(true);
-            } catch {}
-          }
-        }
-      } catch {}
-    })();
-  }, [qrToken]);
+    return () => {
+      try { sessionRef.current && sessionRef.current.stop(); } catch {}
+    };
+  }, []);
 
   const triggerReadyAlertEffects = (orderNum) => {
+    // In-page sound + banner for users who are looking at the tab
     playReadyChime();
     try {
       if (navigator.vibrate) {
@@ -169,6 +129,12 @@ export default function QuickOrderTracker() {
       document.title = `🔔 READY — Order #${orderNum}`;
     }
   };
+
+  // When status changes, update the Media Session banner on the lock screen
+  useEffect(() => {
+    if (!order || !subscribed) return;
+    try { sessionRef.current && sessionRef.current.updateStatus(order.status); } catch {}
+  }, [order?.status, subscribed]);
 
   const fetchTrackerData = async () => {
     try {
@@ -238,38 +204,46 @@ export default function QuickOrderTracker() {
 
   const handleEnableAlerts = async () => {
     setPushError('');
-    if (needsIOSHomeScreen) {
-      setShowIOSOverlay(true);
-      return;
-    }
-
     setSubscribing(true);
     try {
-      await subscribeForOrder(qrToken);
+      // PRIMARY channel: Media Session API — lock-screen banner, works on
+      // iOS Safari AND Android Chrome with no install and no permission prompt.
+      await sessionRef.current.start({
+        orderNumber: order.order_number,
+        restaurantName: restaurantName,
+        logoUrl: order.company_logo_url || null,
+      });
+
+      // BONUS channel: Web Push on Android (silently fails on iOS — that's fine).
+      // If it works, phones get notified even if the tab is killed.
+      if (isPushSupported()) {
+        try { await subscribeForOrder(qrToken); } catch (err) {
+          // Silent — Media Session is the main channel
+          console.info('[tracker] bonus push subscribe failed (ok):', err.message);
+        }
+      }
+
       setSubscribed(true);
       setToastMessage(t.allSetToast);
       setToastVisible(true);
     } catch (err) {
-      console.error('subscribeForOrder error:', err);
-      const code = (err.message || '').toLowerCase();
-      if (code.includes('permission_denied')) {
-        setPushError(t.errPermissionDenied);
-      } else if (code.includes('vapid_public_key_missing')) {
-        setPushError(t.errVapidMissing);
-      } else {
-        setPushError(t.errGeneric);
-      }
+      console.error('enable-alerts error:', err);
+      setPushError(t.errGeneric);
     } finally {
       setSubscribing(false);
     }
   };
 
   const handleTurnOffAlerts = async () => {
+    try { sessionRef.current && sessionRef.current.stop(); } catch {}
+    // Also best-effort unsubscribe push (bonus channel)
     try {
-      const reg = await ensureServiceWorker();
-      const sub = await reg.pushManager.getSubscription();
-      if (sub) {
-        await sub.unsubscribe();
+      if ('serviceWorker' in navigator) {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (reg && reg.pushManager) {
+          const sub = await reg.pushManager.getSubscription();
+          if (sub) await sub.unsubscribe();
+        }
       }
     } catch {}
     setSubscribed(false);
@@ -581,6 +555,9 @@ export default function QuickOrderTracker() {
                 >
                   {t.alertsOnChip}
                 </div>
+                <p style={{ margin: 0, fontSize: '12.5px', color: 'var(--text-soft)', lineHeight: 1.45 }}>
+                  {t.alertsOnSub}
+                </p>
                 <button
                   type="button"
                   onClick={handleTurnOffAlerts}
@@ -597,8 +574,8 @@ export default function QuickOrderTracker() {
                   {t.turnOff}
                 </button>
               </div>
-            ) : pushSupported ? (
-              /* State A (supported) or State B (iOS Safari non-standalone) */
+            ) : (
+              /* Enable Alerts — Media Session API works on both iOS Safari + Android Chrome */
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
                 <button
                   type="button"
@@ -636,22 +613,6 @@ export default function QuickOrderTracker() {
                     {pushError}
                   </p>
                 )}
-              </div>
-            ) : (
-              /* State D — Platform does NOT support Web Push */
-              <div
-                style={{
-                  backgroundColor: '#FFF7ED',
-                  border: '1px solid #FED7AA',
-                  borderRadius: '12px',
-                  padding: '14px',
-                  color: '#9A3412',
-                  fontSize: '13px',
-                  lineHeight: 1.5,
-                  fontWeight: '600',
-                }}
-              >
-                {t.unsupportedNotice}
               </div>
             )}
           </div>
@@ -691,98 +652,7 @@ export default function QuickOrderTracker() {
         </button>
       </footer>
 
-      {/* State B — iOS Safari Add to Home Screen Explainer Overlay */}
-      {showIOSOverlay && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(20, 17, 15, 0.72)',
-            backdropFilter: 'blur(6px)',
-            zIndex: 1300,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '20px',
-          }}
-          onClick={() => setShowIOSOverlay(false)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              backgroundColor: '#FFFFFF',
-              borderRadius: '22px',
-              padding: '28px 24px',
-              maxWidth: '380px',
-              width: '100%',
-              textAlign: isRTL ? 'right' : 'left',
-              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.3)',
-            }}
-          >
-            <div style={{ fontSize: '36px', textAlign: 'center', marginBottom: '10px' }}>📲</div>
-            <h3
-              style={{
-                margin: '0 0 10px 0',
-                fontSize: '18px',
-                fontWeight: '900',
-                textAlign: 'center',
-                color: '#14110F',
-              }}
-            >
-              {t.iosTitle}
-            </h3>
-            <p
-              style={{
-                margin: '0 0 18px 0',
-                fontSize: '13.5px',
-                color: 'var(--text-soft)',
-                lineHeight: 1.5,
-                textAlign: 'center',
-              }}
-            >
-              {t.iosDesc}
-            </p>
-
-            <div
-              style={{
-                backgroundColor: '#FAF8F5',
-                border: '1px solid var(--border)',
-                borderRadius: '14px',
-                padding: '16px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '12px',
-                fontSize: '13px',
-                fontWeight: '700',
-                color: '#14110F',
-                marginBottom: '20px',
-              }}
-            >
-              <div>{t.iosStep1}</div>
-              <div>{t.iosStep2}</div>
-              <div>{t.iosStep3}</div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowIOSOverlay(false)}
-              style={{
-                width: '100%',
-                padding: '13px',
-                borderRadius: '12px',
-                border: 'none',
-                backgroundColor: primaryColor,
-                color: '#FFFFFF',
-                fontSize: '14px',
-                fontWeight: '800',
-                cursor: 'pointer',
-              }}
-            >
-              {t.iosDismiss}
-            </button>
-          </div>
-        </div>
-      )}
+      {/* iOS Add-to-Home-Screen overlay removed — Media Session API works without it. */}
     </div>
   );
 }
