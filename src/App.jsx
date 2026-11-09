@@ -41,6 +41,8 @@ const CustomerClaims = lazy(() => import('./pages/CustomerClaims.jsx'));
 const CustomerProfile = lazy(() => import('./pages/CustomerProfile.jsx'));
 const CustomerOrders = lazy(() => import('./pages/customer/CustomerOrders.jsx'));
 const CustomerRestaurantSpace = lazy(() => import('./pages/CustomerRestaurantSpace.jsx'));
+const QuickOrderTracker = lazy(() => import('./pages/QuickOrderTracker.jsx'));
+const QuickOrdersDisplay = lazy(() => import('./pages/QuickOrdersDisplay.jsx'));
 
 function ProtectedRoute({ children }) {
   const { user, isSuperAdmin, isCustomer, loading, currentCompany } = useAuth();
@@ -243,6 +245,8 @@ export default function App() {
             <Route path="/menu/:slug/:branchSlug" element={<PublicMenu />} />
             <Route path="/menu/:slug/product/:productId" element={<ProductDetailRedirect />} />
             <Route path="/menu/:slug/:branchSlug/product/:productId" element={<ProductDetail />} />
+            <Route path="/track/:qrToken" element={<QuickOrderTracker />} />
+            <Route path="/display/:slug" element={<QuickOrdersDisplay />} />
             <Route path="/invite/:token" element={<InviteAccept />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

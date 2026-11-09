@@ -1,4 +1,4 @@
-const CACHE = 'qrious-v3';
+const CACHE = 'qrious-v4';
 const APP_SHELL = ['/', '/index.html'];
 
 self.addEventListener('install', (e) => {
@@ -49,6 +49,36 @@ self.addEventListener('fetch', (e) => {
         }
         return r;
       }).catch(() => Response.error());
+    })
+  );
+});
+
+self.addEventListener('push', (event) => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch (e) {}
+  const title = data.title || 'QriousQR';
+  const options = {
+    body: data.body || '',
+    icon: data.icon || '/icons/icon-192.png',
+    badge: data.badge || '/icons/icon-192.png',
+    tag: data.tag || 'qrious-push',
+    renotify: data.renotify !== false,
+    requireInteraction: !!data.requireInteraction,
+    vibrate: data.vibrate || [200, 100, 200, 100, 200],
+    data: data.data || {},
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || '/';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      for (const client of windowClients) {
+        if (client.url.includes(url) && 'focus' in client) return client.focus();
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(url);
     })
   );
 });

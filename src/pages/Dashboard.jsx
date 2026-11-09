@@ -35,7 +35,9 @@ import {
 import QrTab from './dashboard/QrTab.jsx';
 import OperatorConsoleTab from './dashboard/OperatorConsoleTab.jsx';
 import OrdersTab from './dashboard/OrdersTab.jsx';
+import QuickOrdersTab from './dashboard/QuickOrdersTab.jsx';
 import { operatorOrdersList } from '../services/orderService.js';
+import { operatorQuickOrdersList } from '../services/quickOrderService.js';
 import FileInput from '../components/FileInput.jsx';
 import LineChart from '../components/LineChart.jsx';
 import BarChart from '../components/BarChart.jsx';
@@ -126,6 +128,7 @@ export default function Dashboard() {
   
   const [activeTab, setActiveTab] = useState('profile');
   const [activeOrdersCount, setActiveOrdersCount] = useState(0);
+  const [activeQuickOrdersCount, setActiveQuickOrdersCount] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   // Database Data States
@@ -332,6 +335,12 @@ export default function Dashboard() {
     } catch (e) {
       console.error(e);
     }
+    try {
+      const quickList = await operatorQuickOrdersList(['pending', 'ready']);
+      setActiveQuickOrdersCount(quickList.length);
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   useEffect(() => {
@@ -340,11 +349,20 @@ export default function Dashboard() {
     refreshActiveOrdersCount();
 
     let channel = null;
+    let quickChannel = null;
     try {
       channel = supabase
         .channel(`orders_count:${company.id}`)
         .on('postgres_changes',
           { event: '*', schema: 'public', table: 'orders', filter: `company_id=eq.${company.id}` },
+          (payload) => {
+            refreshActiveOrdersCount();
+          })
+        .subscribe();
+      quickChannel = supabase
+        .channel(`quick_orders_count:${company.id}`)
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'quick_orders', filter: `company_id=eq.${company.id}` },
           (payload) => {
             refreshActiveOrdersCount();
           })
@@ -359,7 +377,7 @@ export default function Dashboard() {
     window.addEventListener('focus', handleFocus);
 
     const handleStorage = (e) => {
-      if (e.key === 'qriousqr:mock_orders') {
+      if (!e.key || e.key === 'qriousqr:mock_orders' || e.key === 'qriousqr:mock_quick_orders') {
         refreshActiveOrdersCount();
       }
     };
@@ -368,6 +386,9 @@ export default function Dashboard() {
     return () => {
       if (channel) {
         try { supabase.removeChannel(channel); } catch (e) {}
+      }
+      if (quickChannel) {
+        try { supabase.removeChannel(quickChannel); } catch (e) {}
       }
       window.removeEventListener('focus', handleFocus);
       window.removeEventListener('storage', handleStorage);
@@ -1454,6 +1475,30 @@ export default function Dashboard() {
           </button>
 
           <button 
+            className={`nav-item ${activeTab === 'quick-orders' ? 'active' : ''}`}
+            onClick={() => setActiveTab('quick-orders')}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+            </svg>
+            <span>Quick Orders</span>
+            {activeQuickOrdersCount > 0 && (
+              <span className="badge-count-sidebar" style={{
+                marginLeft: 'auto',
+                backgroundColor: '#0E7C7B',
+                color: '#FFFFFF',
+                borderRadius: '10px',
+                padding: '2px 8px',
+                fontSize: '11px',
+                fontWeight: '800',
+                lineHeight: 1
+              }}>
+                {activeQuickOrdersCount}
+              </span>
+            )}
+          </button>
+
+          <button 
             className={`nav-item ${activeTab === 'qr' ? 'active' : ''}`}
             onClick={() => setActiveTab('qr')}
           >
@@ -1545,7 +1590,7 @@ export default function Dashboard() {
             </svg>
           </button>
           <h1>
-            {activeTab === 'qr' ? 'QR Code' : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Management
+            {activeTab === 'qr' ? 'QR Code' : activeTab === 'quick-orders' ? 'Quick Orders' : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Management
             {isStaff && <span className="read-only-header-badge">View Only</span>}
           </h1>
         </header>
@@ -2573,6 +2618,11 @@ export default function Dashboard() {
           {/* ORDERS TAB */}
           {activeTab === 'orders' && (
             <OrdersTab company={company} branches={branches} />
+          )}
+
+          {/* QUICK ORDERS TAB */}
+          {activeTab === 'quick-orders' && (
+            <QuickOrdersTab company={company} branches={branches} />
           )}
 
           {/* QR CODE TAB */}
