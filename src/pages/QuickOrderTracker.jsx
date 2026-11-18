@@ -35,6 +35,7 @@ const T = {
     turnOff: 'Turn off alerts',
     allSetToast: "You're all set — you can lock your phone now.",
     readyBanner: '✓ Your order is READY',
+    readyBannerHigh: '🚨 Please come to the counter NOW',
     errPermissionDenied: 'Notifications are blocked for this site, but the ringing alert is on. Don’t close this page.',
     errGeneric: 'Notifications could not be turned on, but the ringing alert is on. Don’t close this page.',
     poweredBy: 'Powered by QriousQR',
@@ -67,6 +68,7 @@ const T = {
     turnOff: 'إيقاف التنبيهات',
     allSetToast: 'تم التفعيل — يمكنك قفل هاتفك الآن.',
     readyBanner: '✓ طلبك جاهز للاستلام الآن',
+    readyBannerHigh: '🚨 يرجى التوجه إلى الكاونتر الآن',
     errPermissionDenied: 'الإشعارات محظورة لهذا الموقع، لكن التنبيه بالرنين مفعّل. لا تغلق هذه الصفحة.',
     errGeneric: 'تعذر تفعيل الإشعارات، لكن التنبيه بالرنين مفعّل. لا تغلق هذه الصفحة.',
     poweredBy: 'مشغّل بواسطة QriousQR',
@@ -138,8 +140,10 @@ export default function QuickOrderTracker() {
   const [toastMessage, setToastMessage] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
   const [showReadyBanner, setShowReadyBanner] = useState(false);
+  const [bannerHigh, setBannerHigh] = useState(false);
 
   const prevStatusRef = useRef(null);
+  const prevAlertSeqRef = useRef(null); // operator "Notify again" / "High alert" bumps this
   const bannerTimerRef = useRef(null);
   const playerRef = useRef(null);
   if (!playerRef.current) playerRef.current = new OrderAlertPlayer();
@@ -230,6 +234,23 @@ export default function QuickOrderTracker() {
           }
         }
         prevStatusRef.current = data.status;
+
+        // Operator pressed "Notify again" or "High alert"
+        const seq = data.alert_seq ?? 0;
+        if (prevAlertSeqRef.current !== null && seq > prevAlertSeqRef.current && data.status === 'ready') {
+          const level = data.alert_level === 'high' ? 'high' : 'normal';
+          if (playerRef.current.active) {
+            playerRef.current.ring(level);
+          } else {
+            playReadyChime();
+            try { navigator.vibrate && navigator.vibrate([600, 150, 600, 150, 600]); } catch {}
+          }
+          setBannerHigh(level === 'high');
+          setShowReadyBanner(true);
+          if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current);
+          bannerTimerRef.current = setTimeout(() => setShowReadyBanner(false), 15000);
+        }
+        prevAlertSeqRef.current = seq;
       }
       setOrder(data);
     } catch (err) {
@@ -469,13 +490,13 @@ export default function QuickOrderTracker() {
             left: '50%',
             transform: 'translateX(-50%)',
             zIndex: 1200,
-            backgroundColor: '#FF5722',
+            backgroundColor: bannerHigh ? '#DC2626' : '#FF5722',
             color: '#FFFFFF',
             padding: '16px 24px',
             borderRadius: '14px',
             fontWeight: '900',
             fontSize: '18px',
-            boxShadow: '0 16px 32px rgba(255, 87, 34, 0.4)',
+            boxShadow: bannerHigh ? '0 16px 32px rgba(220, 38, 38, 0.45)' : '0 16px 32px rgba(255, 87, 34, 0.4)',
             textAlign: 'center',
             width: 'calc(100% - 32px)',
             maxWidth: '420px',
@@ -483,7 +504,7 @@ export default function QuickOrderTracker() {
             animation: 'readyBannerDrop 0.3s ease-out',
           }}
         >
-          {t.readyBanner} — #{order.order_number}
+          {bannerHigh ? t.readyBannerHigh : t.readyBanner} — #{order.order_number}
         </div>
       )}
 

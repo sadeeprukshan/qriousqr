@@ -5,6 +5,7 @@ import {
   operatorCreateQuickOrder,
   operatorQuickOrderSetStatus,
   operatorQuickOrdersList,
+  operatorQuickOrderRealert,
 } from '../../services/quickOrderService.js';
 import OrderStatusPill from '../../components/OrderStatusPill.jsx';
 import QSuccessToast from '../../components/QSuccessToast.jsx';
@@ -35,6 +36,10 @@ export default function QuickOrdersTab({ company, branches }) {
   // Toast state
   const [toastMessage, setToastMessage] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
+
+  // Re-alert: id of the order currently being re-alerted (disables its buttons)
+  const [realertingId, setRealertingId] = useState(null);
+  const [realertError, setRealertError] = useState({}); // { [orderId]: message }
 
   useEffect(() => {
     if (branches && branches.length > 0) {
@@ -160,6 +165,34 @@ export default function QuickOrdersTab({ company, branches }) {
     } catch (err) {
       console.error(err);
       loadOrders();
+    }
+  };
+
+  // "Notify again" (normal) or "High alert" (louder siren) — rings the customer's phone again
+  const handleRealert = async (order, level) => {
+    setRealertingId(order.id);
+    setRealertError((prev) => ({ ...prev, [order.id]: '' }));
+    try {
+      await operatorQuickOrderRealert(order.id, level);
+      setToastMessage(
+        level === 'high'
+          ? `🚨 High alert sent to #${order.order_number}`
+          : `🔔 Customer #${order.order_number} notified again`
+      );
+      setToastVisible(true);
+      loadOrders();
+    } catch (err) {
+      const msg = (err.message || '').toLowerCase();
+      setRealertError((prev) => ({
+        ...prev,
+        [order.id]: msg.includes('too_soon')
+          ? 'Just alerted — wait a few seconds before alerting again.'
+          : msg.includes('order_not_ready')
+          ? 'Only Ready orders can be re-alerted.'
+          : 'Could not alert the customer. Try again.',
+      }));
+    } finally {
+      setRealertingId(null);
     }
   };
 
@@ -663,6 +696,14 @@ export default function QuickOrdersTab({ company, branches }) {
                               </span>
                             </>
                           )}
+                          {order.status === 'ready' && order.alert_seq > 0 && (
+                            <>
+                              <span>•</span>
+                              <span style={{ color: order.alert_level === 'high' ? '#DC2626' : '#B45309', fontWeight: '700' }}>
+                                {order.alert_level === 'high' ? '🚨' : '🔔'} Re-alerted {order.alert_seq}× · {getRelativeTime(order.last_alert_at)}
+                              </span>
+                            </>
+                          )}
                           {order.status === 'delivered' && order.delivered_at && (
                             <>
                               <span>•</span>
@@ -749,7 +790,45 @@ export default function QuickOrdersTab({ company, branches }) {
                       )}
 
                       {order.status === 'ready' && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleRealert(order, 'normal')}
+                            disabled={realertingId === order.id}
+                            title="Ring the customer's phone again"
+                            style={{
+                              backgroundColor: '#FFFFFF',
+                              color: '#B45309',
+                              border: '1.5px solid #F59E0B',
+                              borderRadius: '6px',
+                              padding: '7px 12px',
+                              fontSize: '13px',
+                              fontWeight: '700',
+                              cursor: 'pointer',
+                              opacity: realertingId === order.id ? 0.6 : 1,
+                            }}
+                          >
+                            🔔 Notify again
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRealert(order, 'high')}
+                            disabled={realertingId === order.id}
+                            title="Urgent: louder siren on the customer's phone"
+                            style={{
+                              backgroundColor: '#DC2626',
+                              color: '#FFFFFF',
+                              border: 'none',
+                              borderRadius: '6px',
+                              padding: '8px 12px',
+                              fontSize: '13px',
+                              fontWeight: '800',
+                              cursor: 'pointer',
+                              opacity: realertingId === order.id ? 0.6 : 1,
+                            }}
+                          >
+                            🚨 High alert
+                          </button>
                           <button
                             type="button"
                             onClick={() => setDeliverConfirmOrder(order)}
@@ -784,6 +863,11 @@ export default function QuickOrdersTab({ company, branches }) {
                         </div>
                       )}
                     </div>
+                    {realertError[order.id] && (
+                      <div style={{ flexBasis: '100%', fontSize: '12px', color: '#DC2626', fontWeight: '600' }}>
+                        ⚠️ {realertError[order.id]}
+                      </div>
+                    )}
                   </div>
                 );
               })}

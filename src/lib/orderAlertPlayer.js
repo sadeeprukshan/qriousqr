@@ -8,6 +8,7 @@
 
 const SILENCE_SRC = '/sounds/silence.wav';
 const ALARM_SRC = '/sounds/order-ready.wav';
+const HIGH_ALERT_SRC = '/sounds/order-high-alert.wav'; // full-scale siren, sounds much louder
 const RING_LIMIT_MS = 120000; // stop ringing after 2 minutes
 
 const TEXT = {
@@ -16,12 +17,16 @@ const TEXT = {
     pendingSub: 'We will ring here when it is ready',
     ready: (n) => `✅ READY · Order #${n}`,
     readySub: 'Please come to the counter',
+    high: (n) => `🚨 COME NOW · Order #${n}`,
+    highSub: 'Your order is waiting at the counter',
   },
   ar: {
     pending: (n) => `جاري التحضير · طلب #${n}`,
     pendingSub: 'سنرنّ هنا عند جهوزية طلبك',
     ready: (n) => `✅ جاهز · طلب #${n}`,
     readySub: 'يرجى التوجه إلى الكاونتر',
+    high: (n) => `🚨 تعال الآن · طلب #${n}`,
+    highSub: 'طلبك بانتظارك في الكاونتر',
   },
 };
 
@@ -31,6 +36,7 @@ export class OrderAlertPlayer {
     this.info = null;
     this.status = 'pending';
     this.ringing = false;
+    this.level = 'normal';
     this.ringTimer = null;
     this.onRingingChange = null;
   }
@@ -71,9 +77,9 @@ export class OrderAlertPlayer {
 
   /** Call on every status change. Rings on 'ready', stops on delivered/cancelled. */
   setStatus(status) {
-    if (!this.active) return;
     const prev = this.status;
-    this.status = status;
+    this.status = status; // remember it even before start(), so the card is right when OK is tapped
+    if (!this.active) return;
     if (status === 'ready' && prev !== 'ready') {
       this.ring();
     } else if (status === 'delivered' || status === 'cancelled') {
@@ -83,14 +89,20 @@ export class OrderAlertPlayer {
     this._applyMetadata();
   }
 
-  ring() {
+  /** @param {'normal'|'high'} level  'high' plays the louder siren */
+  ring(level = 'normal') {
     if (!this.audio) return;
     this.ringing = true;
-    this.audio.src = ALARM_SRC;
+    this.level = level;
+    this.audio.src = level === 'high' ? HIGH_ALERT_SRC : ALARM_SRC;
     this.audio.loop = true;
     this.audio.play().catch(() => {});
     this._applyMetadata();
-    try { navigator.vibrate && navigator.vibrate([500, 200, 500, 200, 500, 200, 800]); } catch {}
+    try {
+      navigator.vibrate && navigator.vibrate(level === 'high'
+        ? [1000, 150, 1000, 150, 1000, 150, 1000, 150, 1000]
+        : [500, 200, 500, 200, 500, 200, 800]);
+    } catch {}
     clearTimeout(this.ringTimer);
     this.ringTimer = setTimeout(() => this.stopRinging(), RING_LIMIT_MS);
     this.onRingingChange && this.onRingingChange(true);
@@ -100,6 +112,7 @@ export class OrderAlertPlayer {
   stopRinging() {
     if (!this.audio || !this.ringing) return;
     this.ringing = false;
+    this.level = 'normal';
     clearTimeout(this.ringTimer);
     this.audio.src = SILENCE_SRC;
     this.audio.loop = true;
@@ -136,15 +149,18 @@ export class OrderAlertPlayer {
     const tx = TEXT[this.info.lang] || TEXT.en;
     const n = this.info.orderNumber;
     const isReady = this.status === 'ready';
+    const isHigh = isReady && this.ringing && this.level === 'high';
+    const title = isHigh ? tx.high(n) : isReady ? tx.ready(n) : tx.pending(n);
+    const album = isHigh ? tx.highSub : isReady ? tx.readySub : tx.pendingSub;
     try {
       const artwork = this.info.logoUrl
         ? [96, 192, 512].map((s) => ({ src: this.info.logoUrl, sizes: `${s}x${s}` }))
         : [{ src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' }];
       // eslint-disable-next-line no-undef
       navigator.mediaSession.metadata = new MediaMetadata({
-        title: isReady ? tx.ready(n) : tx.pending(n),
+        title,
         artist: this.info.restaurantName || 'QriousQR',
-        album: isReady ? tx.readySub : tx.pendingSub,
+        album,
         artwork,
       });
       navigator.mediaSession.playbackState = 'playing';

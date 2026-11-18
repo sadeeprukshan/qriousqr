@@ -119,6 +119,32 @@ export async function operatorQuickOrderSetStatus(orderId, status, reason = null
 }
 
 /**
+ * operator_quick_order_realert(p_order_id, p_level) — ring the customer again.
+ * level: 'normal' (Notify again) | 'high' (High alert, louder siren).
+ * Errors: order_not_ready, too_soon (10 s cooldown), not_authorized.
+ */
+export async function operatorQuickOrderRealert(orderId, level = 'normal') {
+  if (isMockMode) {
+    const orders = getMockQuickOrders();
+    const order = orders.find((o) => o.id === orderId);
+    if (!order) throw new Error('order_not_found');
+    if (order.status !== 'ready') throw new Error('order_not_ready');
+    order.alert_seq = (order.alert_seq || 0) + 1;
+    order.alert_level = level;
+    order.last_alert_at = new Date().toISOString();
+    saveMockQuickOrders(orders);
+    return order;
+  }
+
+  const { data, error } = await supabase.rpc('operator_quick_order_realert', {
+    p_order_id: orderId,
+    p_level: level,
+  });
+  if (error) throw new Error(error.message);
+  return Array.isArray(data) ? data[0] : data;
+}
+
+/**
  * operator_quick_orders_list(p_statuses?, p_branch_id?, p_limit?)
  */
 export async function operatorQuickOrdersList(statuses = null, branchId = null, limit = null) {
@@ -166,6 +192,8 @@ export async function trackQuickOrder(qrToken) {
       delivered_at: found.delivered_at,
       cancelled_at: found.cancelled_at,
       cancelled_reason: found.cancelled_reason,
+      alert_seq: found.alert_seq || 0,
+      alert_level: found.alert_level || 'normal',
       company_name_en: found.company_name_en || 'Kantami',
       company_name_ar: found.company_name_ar || 'كانتامي',
       company_logo_url: found.company_logo_url,
