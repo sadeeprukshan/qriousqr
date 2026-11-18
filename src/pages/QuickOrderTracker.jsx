@@ -3,7 +3,8 @@ import { useParams } from 'react-router-dom';
 import { useLang } from '../context/LanguageContext.jsx';
 import { supabase, isMockMode } from '../supabaseClient.js';
 import { trackQuickOrder } from '../services/quickOrderService.js';
-import { isPushSupported, isIOSSafari, subscribeForOrder } from '../lib/webPush.js';
+import { isPushSupported, subscribeForOrder } from '../lib/webPush.js';
+import { OrderAlertPlayer } from '../lib/orderAlertPlayer.js';
 import QSuccessToast from '../components/QSuccessToast.jsx';
 
 const T = {
@@ -20,21 +21,22 @@ const T = {
     deliveredSub: 'Thank you for visiting!',
     cancelledTitle: 'Order cancelled',
     cancelledReasonPrefix: 'Reason: ',
-    enableAlertsBtn: '🔔 Notify me when ready',
-    enableAlertsSub: 'Tap, then choose "Allow". You will get a notification on your phone even when it is locked.',
+    promptTitle: 'Get alerted when your order is ready?',
+    promptBodyPush: 'Tap OK, then "Allow". Your phone will ring and show a notification, even when it is locked.',
+    promptBodyPlayer: 'Tap OK. Your phone will ring when your order is ready, even when it is locked. Don’t close this page.',
+    promptOk: 'OK',
+    promptLater: 'Not now',
+    enableAlertsBtn: '🔔 Alert me when ready',
     enablingAlerts: 'Enabling…',
-    alertsOnChip: '✓ Notifications on',
-    alertsOnSub: 'You can lock your phone. Tap the notification when it arrives to open your order.',
-    turnOff: 'Turn off',
+    alertsOnChip: '✓ Alerts on — you can lock your phone',
+    alertsOnSubPush: 'Your phone will ring and show a notification when your order is ready.',
+    alertsOnSubPlayer: 'Your phone will ring when your order is ready. Don’t close this page; locking the phone is fine.',
+    stopAlarm: '🔕 Stop alarm',
+    turnOff: 'Turn off alerts',
     allSetToast: "You're all set — you can lock your phone now.",
     readyBanner: '✓ Your order is READY',
-    errPermissionDenied: 'Notifications are blocked for this site. Allow them in your browser settings, or keep this page open.',
-    errVapidMissing: 'Notifications are not configured yet. Keep this page open — we will alert you here.',
-    errGeneric: 'Could not turn on notifications. Keep this page open — we will alert you here.',
-    iosNote: 'iPhone: Apple only allows lock-screen notifications for sites added to the Home Screen (Share ➜ Add to Home Screen). Otherwise, keep this page open and we will chime when your order is ready.',
-    unsupportedNote: 'This browser cannot show notifications. Keep this page open — we will chime when your order is ready.',
-    keepOpenBtn: '🔊 Turn on sound alert',
-    keepOpenOn: '✓ Sound alert on — keep this page open',
+    errPermissionDenied: 'Notifications are blocked for this site, but the ringing alert is on. Don’t close this page.',
+    errGeneric: 'Notifications could not be turned on, but the ringing alert is on. Don’t close this page.',
     poweredBy: 'Powered by QriousQR',
     langToggle: 'العربية',
   },
@@ -51,21 +53,22 @@ const T = {
     deliveredSub: 'شكراً لزيارتكم!',
     cancelledTitle: 'تم إلغاء الطلب',
     cancelledReasonPrefix: 'السبب: ',
+    promptTitle: 'هل تريد تنبيهاً عند جهوزية طلبك؟',
+    promptBodyPush: 'اضغط موافق ثم «السماح». سيرنّ هاتفك ويظهر إشعار حتى وهو مقفل.',
+    promptBodyPlayer: 'اضغط موافق. سيرنّ هاتفك عند جهوزية طلبك حتى وهو مقفل. لا تغلق هذه الصفحة.',
+    promptOk: 'موافق',
+    promptLater: 'ليس الآن',
     enableAlertsBtn: '🔔 نبّهني عند الجهوزية',
-    enableAlertsSub: 'اضغط ثم اختر "السماح". سيصلك إشعار على هاتفك حتى وهو مقفل.',
     enablingAlerts: 'جاري التفعيل…',
-    alertsOnChip: '✓ الإشعارات مفعّلة',
-    alertsOnSub: 'يمكنك قفل هاتفك. اضغط على الإشعار عند وصوله لفتح طلبك.',
-    turnOff: 'إيقاف',
+    alertsOnChip: '✓ التنبيه مفعّل — يمكنك قفل هاتفك',
+    alertsOnSubPush: 'سيرنّ هاتفك ويظهر إشعار عند جهوزية طلبك.',
+    alertsOnSubPlayer: 'سيرنّ هاتفك عند جهوزية طلبك. لا تغلق هذه الصفحة، ويمكنك قفل الهاتف.',
+    stopAlarm: '🔕 إيقاف الرنين',
+    turnOff: 'إيقاف التنبيهات',
     allSetToast: 'تم التفعيل — يمكنك قفل هاتفك الآن.',
     readyBanner: '✓ طلبك جاهز للاستلام الآن',
-    errPermissionDenied: 'الإشعارات محظورة لهذا الموقع. فعّلها من إعدادات المتصفح أو أبقِ هذه الصفحة مفتوحة.',
-    errVapidMissing: 'الإشعارات غير مهيأة بعد. أبقِ هذه الصفحة مفتوحة وسننبهك هنا.',
-    errGeneric: 'تعذر تفعيل الإشعارات. أبقِ هذه الصفحة مفتوحة وسننبهك هنا.',
-    iosNote: 'آيفون: تسمح Apple بإشعارات شاشة القفل فقط للمواقع المضافة إلى الشاشة الرئيسية (مشاركة ➜ إضافة إلى الشاشة الرئيسية). وإلا أبقِ هذه الصفحة مفتوحة وسنصدر صوتاً عند جهوزية طلبك.',
-    unsupportedNote: 'هذا المتصفح لا يدعم الإشعارات. أبقِ هذه الصفحة مفتوحة وسنصدر صوتاً عند جهوزية طلبك.',
-    keepOpenBtn: '🔊 تفعيل التنبيه الصوتي',
-    keepOpenOn: '✓ التنبيه الصوتي مفعّل — أبقِ الصفحة مفتوحة',
+    errPermissionDenied: 'الإشعارات محظورة لهذا الموقع، لكن التنبيه بالرنين مفعّل. لا تغلق هذه الصفحة.',
+    errGeneric: 'تعذر تفعيل الإشعارات، لكن التنبيه بالرنين مفعّل. لا تغلق هذه الصفحة.',
     poweredBy: 'مشغّل بواسطة QriousQR',
     langToggle: 'English',
   },
@@ -121,11 +124,15 @@ export default function QuickOrderTracker() {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Alert state — Web Push (browser notification) is the primary channel
-  const [subscribed, setSubscribed] = useState(false);
+  // Alerts = two channels started by one OK tap:
+  //  1. Lock-screen player (all phones): keeps the page alive while locked, rings on ready
+  //  2. Web Push notification (where the browser allows it, e.g. Android Chrome)
+  const [alertsOn, setAlertsOn] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
   const [pushError, setPushError] = useState('');
-  const [soundOn, setSoundOn] = useState(false); // keep-page-open fallback
+  const [showPrompt, setShowPrompt] = useState(false);
+  const [promptDismissed, setPromptDismissed] = useState(false);
+  const [ringing, setRinging] = useState(false);
 
   // Toast & Ready Banner states
   const [toastMessage, setToastMessage] = useState('');
@@ -134,32 +141,73 @@ export default function QuickOrderTracker() {
 
   const prevStatusRef = useRef(null);
   const bannerTimerRef = useRef(null);
+  const playerRef = useRef(null);
+  if (!playerRef.current) playerRef.current = new OrderAlertPlayer();
 
-  const { iOS, standalone } = isIOSSafari();
   const pushSupported = isPushSupported();
-  const iosNeedsHomeScreen = iOS && !standalone && !pushSupported;
+
+  useEffect(() => {
+    const player = playerRef.current;
+    player.onRingingChange = setRinging;
+    return () => player.stop();
+  }, []);
+
+  // Keep the lock-screen card in sync with the order status and language
+  useEffect(() => {
+    if (order?.status) playerRef.current.setStatus(order.status);
+    if (order && (order.status === 'delivered' || order.status === 'cancelled')) setAlertsOn(false);
+  }, [order?.status]);
+
+  useEffect(() => {
+    playerRef.current.setLang(lang);
+  }, [lang]);
+
+  // The "message": ask once, as soon as an active order is on screen
+  useEffect(() => {
+    const active = order && (order.status === 'pending' || order.status === 'ready');
+    if (active && !alertsOn && !promptDismissed) setShowPrompt(true);
+  }, [order?.status, alertsOn, promptDismissed]);
+
+  // Make "Add to Home Screen" open THIS order. The tracker manifest has no
+  // start_url, so browsers use this page's URL. The icon is named after the order.
+  useEffect(() => {
+    if (!order?.order_number) return;
+    const link = document.getElementById('app-manifest');
+    const prevHref = link?.getAttribute('href');
+    link?.setAttribute('href', '/manifest-track.webmanifest');
+
+    let titleMeta = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+    const createdMeta = !titleMeta;
+    if (!titleMeta) {
+      titleMeta = document.createElement('meta');
+      titleMeta.setAttribute('name', 'apple-mobile-web-app-title');
+      document.head.appendChild(titleMeta);
+    }
+    const prevAppTitle = titleMeta.getAttribute('content');
+    titleMeta.setAttribute('content', `Order #${order.order_number}`);
+
+    return () => {
+      if (prevHref) link?.setAttribute('href', prevHref);
+      if (createdMeta) titleMeta.remove();
+      else titleMeta.setAttribute('content', prevAppTitle || '');
+    };
+  }, [order?.order_number]);
 
   // Revisit: if this browser already granted permission, silently attach
   // its existing subscription to this order so it gets the push too.
   useEffect(() => {
     if (!pushSupported || typeof Notification === 'undefined') return;
     if (Notification.permission !== 'granted') return;
-    (async () => {
-      try {
-        await subscribeForOrder(qrToken);
-        setSubscribed(true);
-      } catch {}
-    })();
+    subscribeForOrder(qrToken).catch(() => {});
   }, [qrToken]);
 
   const triggerReadyAlertEffects = (orderNum) => {
-    // In-page sound + banner for users who are looking at the tab
-    playReadyChime();
-    try {
-      if (navigator.vibrate) {
-        navigator.vibrate([400, 150, 400, 150, 400]);
-      }
-    } catch {}
+    // The lock-screen player rings by itself (setStatus effect). Only chime
+    // in-page if the customer never turned alerts on.
+    if (!playerRef.current.active) {
+      playReadyChime();
+      try { navigator.vibrate && navigator.vibrate([400, 150, 400, 150, 400]); } catch {}
+    }
     setShowReadyBanner(true);
     if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current);
     bannerTimerRef.current = setTimeout(() => {
@@ -237,35 +285,51 @@ export default function QuickOrderTracker() {
   }, [qrToken]);
 
   const handleEnableAlerts = async () => {
+    setShowPrompt(false);
     setPushError('');
-    unlockAudio(); // must run inside the tap so the in-page chime can play later
-    setSubscribing(true);
+    // Both must start synchronously inside this tap — no `await` before them.
+    unlockAudio();
+    const playStarted = playerRef.current.start({
+      orderNumber: order.order_number,
+      restaurantName,
+      logoUrl: order.company_logo_url || null,
+      lang,
+    });
+    const pushStarted = pushSupported ? subscribeForOrder(qrToken) : null; // shows "Allow" prompt
+    pushStarted?.catch(() => {}); // handled below; avoids an "uncaught" log while the player starts
+
     try {
-      // Browser push notification (Web Push) — banner on the lock screen,
-      // tapping it opens this order page. Permission prompt fires here.
-      await subscribeForOrder(qrToken);
-      setSubscribed(true);
-      setSoundOn(true);
-      setToastMessage(t.allSetToast);
-      setToastVisible(true);
+      await playStarted;
     } catch (err) {
-      console.error('subscribeForOrder error:', err);
-      const code = (err?.message || '').toLowerCase();
-      if (code.includes('permission_denied')) setPushError(t.errPermissionDenied);
-      else if (code.includes('vapid_public_key_missing')) setPushError(t.errVapidMissing);
-      else setPushError(t.errGeneric);
-      setSoundOn(true); // still chime in-page as fallback
-    } finally {
-      setSubscribing(false);
+      console.error('player start failed', err);
     }
+    setAlertsOn(true);
+    if (order.status === 'ready') playerRef.current.ring();
+
+    if (pushStarted) {
+      setSubscribing(true);
+      try {
+        await pushStarted;
+      } catch (err) {
+        console.warn('push subscribe failed (player still active):', err);
+        const code = (err?.message || '').toLowerCase();
+        setPushError(code.includes('permission_denied') ? t.errPermissionDenied : t.errGeneric);
+      } finally {
+        setSubscribing(false);
+      }
+    }
+    setToastMessage(t.allSetToast);
+    setToastVisible(true);
   };
 
-  const handleEnableSoundOnly = () => {
-    unlockAudio();
-    setSoundOn(true);
+  const handleStopAlarm = () => {
+    playerRef.current.stopRinging();
   };
 
   const handleTurnOffAlerts = async () => {
+    playerRef.current.stop();
+    setAlertsOn(false);
+    setPromptDismissed(true);
     try {
       if ('serviceWorker' in navigator) {
         const reg = await navigator.serviceWorker.getRegistration();
@@ -275,7 +339,6 @@ export default function QuickOrderTracker() {
         }
       }
     } catch {}
-    setSubscribed(false);
   };
 
   if (loading) {
@@ -554,7 +617,7 @@ export default function QuickOrderTracker() {
           )}
         </div>
 
-        {/* Enable Alerts Block (shown while order is active) */}
+        {/* Alerts block (shown while order is active) */}
         {isOrderActive && (
           <div
             style={{
@@ -566,103 +629,46 @@ export default function QuickOrderTracker() {
               boxShadow: '0 4px 14px rgba(0,0,0,0.03)',
             }}
           >
-            {/* State C — Push already enabled */}
-            {subscribed ? (
+            {alertsOn ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-                <div
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    backgroundColor: '#DCFCE7',
-                    color: '#166534',
-                    padding: '8px 16px',
-                    borderRadius: '999px',
-                    fontSize: '14px',
-                    fontWeight: '800',
-                  }}
-                >
-                  {t.alertsOnChip}
-                </div>
+                {ringing ? (
+                  <button
+                    type="button"
+                    onClick={handleStopAlarm}
+                    style={{ width: '100%', padding: '16px 20px', borderRadius: '14px', border: 'none', backgroundColor: '#0E7C7B', color: '#FFFFFF', fontSize: '17px', fontWeight: '900', cursor: 'pointer' }}
+                  >
+                    {t.stopAlarm}
+                  </button>
+                ) : (
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', backgroundColor: '#DCFCE7', color: '#166534', padding: '8px 16px', borderRadius: '999px', fontSize: '14px', fontWeight: '800' }}>
+                    {t.alertsOnChip}
+                  </div>
+                )}
                 <p style={{ margin: 0, fontSize: '12.5px', color: 'var(--text-soft)', lineHeight: 1.45 }}>
-                  {t.alertsOnSub}
+                  {pushSupported && !pushError ? t.alertsOnSubPush : t.alertsOnSubPlayer}
                 </p>
+                {pushError && (
+                  <p style={{ margin: 0, fontSize: '12px', color: '#B45309', fontWeight: '600', lineHeight: 1.4 }}>
+                    {pushError}
+                  </p>
+                )}
                 <button
                   type="button"
                   onClick={handleTurnOffAlerts}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--text-soft)',
-                    fontSize: '12px',
-                    textDecoration: 'underline',
-                    cursor: 'pointer',
-                    padding: 0,
-                  }}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-soft)', fontSize: '12px', textDecoration: 'underline', cursor: 'pointer', padding: 0 }}
                 >
                   {t.turnOff}
                 </button>
               </div>
-            ) : !pushSupported ? (
-              /* No Web Push here (iPhone Safari tab, or old browser): honest note + in-page sound fallback */
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-                <p style={{ margin: 0, fontSize: '13px', color: '#9A3412', backgroundColor: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: '12px', padding: '12px 14px', lineHeight: 1.5, fontWeight: '600' }}>
-                  {iosNeedsHomeScreen ? t.iosNote : t.unsupportedNote}
-                </p>
-                {soundOn ? (
-                  <div style={{ backgroundColor: '#DCFCE7', color: '#166534', padding: '8px 16px', borderRadius: '999px', fontSize: '13px', fontWeight: '800' }}>
-                    {t.keepOpenOn}
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleEnableSoundOnly}
-                    style={{ width: '100%', padding: '14px 20px', borderRadius: '14px', border: 'none', backgroundColor: primaryColor, color: '#FFFFFF', fontSize: '15px', fontWeight: '800', cursor: 'pointer' }}
-                  >
-                    {t.keepOpenBtn}
-                  </button>
-                )}
-              </div>
             ) : (
-              /* Web Push — browser notification banner, works with the phone locked */
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-                <button
-                  type="button"
-                  onClick={handleEnableAlerts}
-                  disabled={subscribing}
-                  style={{
-                    width: '100%',
-                    padding: '15px 20px',
-                    borderRadius: '14px',
-                    border: 'none',
-                    backgroundColor: primaryColor,
-                    color: '#FFFFFF',
-                    fontSize: '16px',
-                    fontWeight: '800',
-                    cursor: 'pointer',
-                    boxShadow: '0 8px 20px rgba(255, 87, 34, 0.25)',
-                    opacity: subscribing ? 0.7 : 1,
-                  }}
-                >
-                  {subscribing ? t.enablingAlerts : t.enableAlertsBtn}
-                </button>
-                <p style={{ margin: 0, fontSize: '12.5px', color: 'var(--text-soft)', lineHeight: 1.45 }}>
-                  {t.enableAlertsSub}
-                </p>
-                {pushError && (
-                  <p
-                    style={{
-                      margin: '4px 0 0 0',
-                      fontSize: '12px',
-                      color: '#DC2626',
-                      fontWeight: '600',
-                      lineHeight: 1.4,
-                    }}
-                  >
-                    {pushError}
-                  </p>
-                )}
-              </div>
+              <button
+                type="button"
+                onClick={handleEnableAlerts}
+                disabled={subscribing}
+                style={{ width: '100%', padding: '15px 20px', borderRadius: '14px', border: 'none', backgroundColor: primaryColor, color: '#FFFFFF', fontSize: '16px', fontWeight: '800', cursor: 'pointer', boxShadow: '0 8px 20px rgba(255, 87, 34, 0.25)', opacity: subscribing ? 0.7 : 1 }}
+              >
+                {subscribing ? t.enablingAlerts : t.enableAlertsBtn}
+              </button>
             )}
           </div>
         )}
@@ -701,7 +707,36 @@ export default function QuickOrderTracker() {
         </button>
       </footer>
 
-      {/* iOS Add-to-Home-Screen overlay removed — Media Session API works without it. */}
+      {/* The "message": one OK starts the ringing player + asks for notifications */}
+      {showPrompt && !alertsOn && isOrderActive && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{ position: 'fixed', inset: 0, zIndex: 1300, backgroundColor: 'rgba(20, 17, 15, 0.55)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '16px' }}
+        >
+          <div style={{ backgroundColor: '#FFFFFF', borderRadius: '22px', padding: '26px 22px 20px', width: '100%', maxWidth: '420px', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.35)', marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+            <div style={{ fontSize: '38px', marginBottom: '8px' }}>🔔</div>
+            <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '900', color: '#14110F' }}>{t.promptTitle}</h3>
+            <p style={{ margin: '0 0 18px 0', fontSize: '14px', color: 'var(--text-soft)', lineHeight: 1.5 }}>
+              {pushSupported ? t.promptBodyPush : t.promptBodyPlayer}
+            </p>
+            <button
+              type="button"
+              onClick={handleEnableAlerts}
+              style={{ width: '100%', padding: '15px', borderRadius: '14px', border: 'none', backgroundColor: primaryColor, color: '#FFFFFF', fontSize: '17px', fontWeight: '900', cursor: 'pointer' }}
+            >
+              {t.promptOk}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setShowPrompt(false); setPromptDismissed(true); }}
+              style={{ marginTop: '10px', background: 'none', border: 'none', color: 'var(--text-soft)', fontSize: '13px', cursor: 'pointer', padding: '6px' }}
+            >
+              {t.promptLater}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

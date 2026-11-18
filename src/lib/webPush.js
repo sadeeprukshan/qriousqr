@@ -22,7 +22,9 @@ export function isIOSSafari() {
     return { iOS: false, standalone: false };
   }
   const ua = navigator.userAgent || '';
-  const iOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+  // iPadOS 13+ reports itself as a Mac, so also check for a touch screen
+  const iOS = (/iPad|iPhone|iPod/.test(ua) && !window.MSStream)
+    || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
   // iOS 16.4+ supports Web Push only after the page is added to the Home Screen (standalone mode).
   const standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
     || window.navigator.standalone === true;

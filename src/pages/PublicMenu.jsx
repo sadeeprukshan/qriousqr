@@ -143,18 +143,21 @@ export default function PublicMenu({ slug: propSlug, branchSlug: propBranchSlug,
     if (!data?.company || !data?.branch) return;
     const c = data.company;
     const b = data.branch;
+    // A blob: manifest resolves relative URLs against the blob URL, which makes
+    // them invalid ("start_url ignored"). All URLs must be absolute.
+    const origin = window.location.origin;
     const manifest = {
       name: `${c.name_en} — ${b.name_en}`,
       short_name: c.name_en.slice(0, 12),
-      start_url: window.location.pathname,
-      scope: `/menu/${c.slug}/`,
+      start_url: `${origin}${window.location.pathname}`,
+      scope: `${origin}/menu/${c.slug}/`,
       display: 'standalone',
       background_color: c.background_color || '#FAF8F5',
       theme_color: c.theme_color || '#FF5722',
       orientation: 'portrait',
       icons: [
-        { src: c.logo_url || '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-        { src: c.logo_url || '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' }
+        { src: c.logo_url || `${origin}/icons/icon-192.png`, sizes: '192x192', type: 'image/png', purpose: 'any' },
+        { src: c.logo_url || `${origin}/icons/icon-512.png`, sizes: '512x512', type: 'image/png', purpose: 'any' }
       ]
     };
     const blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
