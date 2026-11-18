@@ -5,6 +5,7 @@ import { supabase, isMockMode } from '../supabaseClient.js';
 import { trackQuickOrder } from '../services/quickOrderService.js';
 import { isPushSupported, subscribeForOrder } from '../lib/webPush.js';
 import { OrderAlertPlayer } from '../lib/orderAlertPlayer.js';
+import { markOrderViewed } from '../services/counterService.js';
 import QSuccessToast from '../components/QSuccessToast.jsx';
 
 const T = {
@@ -165,6 +166,11 @@ export default function QuickOrderTracker() {
   useEffect(() => {
     playerRef.current.setLang(lang);
   }, [lang]);
+
+  // Tell the counter tablet this order was scanned, so it can show the next one
+  useEffect(() => {
+    if (qrToken) markOrderViewed(qrToken);
+  }, [qrToken]);
 
   // The "message": ask once, as soon as an active order is on screen
   useEffect(() => {

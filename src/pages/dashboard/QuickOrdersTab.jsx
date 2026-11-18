@@ -656,18 +656,29 @@ export default function QuickOrdersTab({ company, branches }) {
 
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                          {/* Push subs chip */}
+                          {/* Where the order came from */}
+                          {order.source === 'pos' && (
+                            <span style={{ fontSize: '11px', fontWeight: '800', padding: '3px 8px', borderRadius: '999px', backgroundColor: '#EEF2FF', color: '#4338CA' }}>
+                              POS
+                            </span>
+                          )}
+                          {order.source === 'self' && (
+                            <span style={{ fontSize: '11px', fontWeight: '800', padding: '3px 8px', borderRadius: '999px', backgroundColor: '#FEF3C7', color: '#92400E' }}>
+                              Check-in
+                            </span>
+                          )}
+                          {/* Scanned chip: push subscriptions, or the customer opened the tracker (e.g. iPhone player) */}
                           <span
                             style={{
                               fontSize: '11px',
                               fontWeight: '700',
                               padding: '3px 8px',
                               borderRadius: '999px',
-                              backgroundColor: subsCount > 0 ? 'rgba(14, 124, 123, 0.12)' : '#F3F4F6',
-                              color: subsCount > 0 ? '#0E7C7B' : '#6B7280',
+                              backgroundColor: subsCount > 0 || order.viewed_at ? 'rgba(14, 124, 123, 0.12)' : '#F3F4F6',
+                              color: subsCount > 0 || order.viewed_at ? '#0E7C7B' : '#6B7280',
                             }}
                           >
-                            {subsCount > 0 ? `📱 ${subsCount}` : '📱 not scanned yet'}
+                            {subsCount > 0 ? `📱 ${subsCount}` : order.viewed_at ? '📱 scanned' : '📱 not scanned yet'}
                           </span>
 
                           {order.operator_note && (
