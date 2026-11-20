@@ -25,6 +25,13 @@ export const createDisplay = async (name, branchId = null) =>
 export const newPairingCode = async (id) => one(await rpc('operator_new_pairing_code', { p_id: id }));
 export const listDisplays = async () => (await rpc('operator_list_displays')) || [];
 export const revokeDisplay = (id) => rpc('operator_revoke_display', { p_id: id });
+export const setDisplayReceiptLabel = (id, label) =>
+  rpc('operator_set_display_receipt_label', { p_id: id, p_label: label });
+
+// Android app for printer mode (served from the website's public/downloads folder)
+export const COUNTER_APK_URL = '/downloads/qriousqr-counter.apk';
+// For older 32-bit Android tablets that say "App not installed" with the main APK
+export const COUNTER_APK_ARMV7_URL = '/downloads/qriousqr-counter-armv7.apk';
 
 // ---------- Counter tablet (anonymous, uses its device token) ----------
 const TOKEN_KEY = 'qriousqr:counter_device_token';

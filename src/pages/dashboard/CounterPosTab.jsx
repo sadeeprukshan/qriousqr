@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import {
-  createDisplay, newPairingCode, listDisplays, revokeDisplay,
-  createPosKey, listPosKeys, revokePosKey, POS_INTAKE_URL,
+  createDisplay, newPairingCode, listDisplays, revokeDisplay, setDisplayReceiptLabel,
+  createPosKey, listPosKeys, revokePosKey, POS_INTAKE_URL, COUNTER_APK_URL, COUNTER_APK_ARMV7_URL,
 } from '../../services/counterService.js';
+import { findOrderNumber } from '../../lib/receiptNumber.js';
 import QSuccessToast from '../../components/QSuccessToast.jsx';
 
 // Owner/manager screen: pair counter tablets and create POS integration keys.
@@ -45,6 +46,84 @@ function CopyField({ value, label }) {
   );
 }
 
+// Printer mode setup + diagnostics for one counter tablet
+function PrinterModePanel({ display, onSaved }) {
+  const [label, setLabel] = useState(display.receipt_label || '');
+  const [saving, setSaving] = useState(false);
+  const [sample, setSample] = useState(display.last_receipt_excerpt || '');
+  const detected = sample.trim() ? findOrderNumber(sample, label) : null;
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await setDisplayReceiptLabel(display.id, label);
+      onSaved('Receipt label saved');
+    } catch {
+      onSaved('Could not save the label');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ flexBasis: '100%', marginTop: '8px', paddingTop: '14px', borderTop: '1px dashed var(--border)', fontSize: '13px', lineHeight: 1.55 }}>
+      <div style={{ marginBottom: '12px' }}>
+        <strong>Setup:</strong> install the <a href={COUNTER_APK_URL} download style={{ color: '#0E7C7B', fontWeight: 700 }}>QriousQR Counter app</a> on
+        the tablet, pair it, then tap its 🖨 button to see the tablet's address. In the POS, add a <strong>network ESC/POS printer</strong> with
+        that address and port <strong style={mono}>9100</strong>, as an extra printer so the paper receipt still prints.
+      </div>
+
+      <div style={{ background: '#FAF8F5', borderRadius: '10px', padding: '10px 12px', marginBottom: '12px' }}>
+        {display.printer_ip && (
+          <div>Tablet printer address: <strong style={mono}>{display.printer_ip}:9100</strong></div>
+        )}
+        {display.last_receipt_at ? (
+          <div>
+            Last receipt {ago(display.last_receipt_at)}:{' '}
+            {display.last_receipt_number
+              ? <strong style={{ color: '#15803D' }}>✅ found order #{display.last_receipt_number}</strong>
+              : <strong style={{ color: '#B45309' }}>⚠️ no order number found. Set the label below.</strong>}
+          </div>
+        ) : (
+          <div style={{ color: 'var(--text-soft)' }}>No receipt received yet. Print a test receipt from the POS.</div>
+        )}
+      </div>
+
+      <label style={{ display: 'block', fontWeight: 700, marginBottom: '4px' }}>
+        Text printed right before the order number on your receipt
+      </label>
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '6px' }}>
+        <input
+          style={{ ...input, flex: '1 1 220px' }}
+          maxLength={40}
+          placeholder='e.g. Order #, Ticket No, رقم الطلب'
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+        />
+        <button type="button" style={btn} onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
+      </div>
+      <div style={{ color: 'var(--text-soft)', fontSize: '12px', marginBottom: '12px' }}>
+        Optional. Without it we look for common labels (Order No, Ticket, #…) and the number printed in the largest font.
+      </div>
+
+      <label style={{ display: 'block', fontWeight: 700, marginBottom: '4px' }}>Test with receipt text</label>
+      <textarea
+        value={sample}
+        onChange={(e) => setSample(e.target.value)}
+        placeholder="Paste the text of a receipt here (the last receipt the tablet received appears here automatically)"
+        style={{ ...input, ...mono, width: '100%', boxSizing: 'border-box', minHeight: '110px', resize: 'vertical', fontSize: '12px' }}
+      />
+      {sample.trim() && (
+        <div style={{ marginTop: '6px', fontWeight: 700, color: detected?.number ? '#15803D' : '#B45309' }}>
+          {detected?.number
+            ? `✅ Order number found: ${detected.number}`
+            : '⚠️ No order number found in this text. Add the label printed before the number.'}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Modal({ children, onClose }) {
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: '16px' }}>
@@ -69,6 +148,7 @@ export default function CounterPosTab({ branches }) {
   const [busy, setBusy] = useState(false);
 
   const [pairingModal, setPairingModal] = useState(null); // { name, pairing_code, pairing_expires_at }
+  const [printerOpenId, setPrinterOpenId] = useState(null); // display whose printer-mode panel is open
   const [keyModal, setKeyModal] = useState(null); // { name, api_key }
 
   const multiBranch = branches && branches.length > 1;
@@ -165,8 +245,23 @@ export default function CounterPosTab({ branches }) {
         <p style={{ margin: '0 0 16px', fontSize: '13px', color: 'var(--text-soft)', lineHeight: 1.5 }}>
           A tablet facing the customer. It shows the QR for each new order the moment it arrives, a pickup board, and a
           check-in QR that works with <strong>any</strong> POS (customers type the number from their receipt).
-          On the tablet, open <strong style={mono}>{window.location.host}/counter</strong> and enter the pairing code.
         </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '10px', marginBottom: '16px', fontSize: '13px', lineHeight: 1.5 }}>
+          <div style={{ background: '#FAF8F5', borderRadius: '12px', padding: '12px 14px' }}>
+            <strong>Browser only</strong><br />
+            Open <strong style={mono}>{window.location.host}/counter</strong> on any tablet and enter the pairing code.
+            Orders arrive from the POS API, Quick Orders, or customer check-in.
+          </div>
+          <div style={{ background: '#FAF8F5', borderRadius: '12px', padding: '12px 14px' }}>
+            <strong>Printer mode</strong> (POS prints to the tablet over Wi-Fi)<br />
+            Install the <a href={COUNTER_APK_URL} download style={{ color: '#0E7C7B', fontWeight: 700 }}>QriousQR Counter app for Android</a>,
+            pair it, then add it in your POS as a network printer. iPad app coming to the App Store.
+            <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+              Older tablet says &quot;App not installed&quot;? Use the <a href={COUNTER_APK_ARMV7_URL} download style={{ color: '#0E7C7B' }}>version for older tablets</a>.
+              Android may ask to allow installing apps from your browser; allow it once.
+            </div>
+          </div>
+        </div>
 
         <form onSubmit={handleAddDisplay} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '18px' }}>
           <input style={{ ...input, flex: '1 1 200px' }} maxLength={60} placeholder="Name, e.g. Front counter" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
@@ -204,8 +299,18 @@ export default function CounterPosTab({ branches }) {
                       )}
                     </div>
                   </div>
+                  <button
+                    type="button"
+                    style={{ ...ghostBtn, background: printerOpenId === d.id ? '#F3F4F6' : 'none' }}
+                    onClick={() => setPrinterOpenId(printerOpenId === d.id ? null : d.id)}
+                  >
+                    🖨 Printer mode
+                  </button>
                   <button type="button" style={ghostBtn} onClick={() => handleNewCode(d)}>{d.paired_at ? 'Re-pair' : 'New code'}</button>
                   <button type="button" style={{ ...ghostBtn, color: '#DC2626' }} onClick={() => handleRemoveDisplay(d)}>Remove</button>
+                  {printerOpenId === d.id && (
+                    <PrinterModePanel key={d.id} display={d} onSaved={(msg) => { setToast(msg); load(); }} />
+                  )}
                 </div>
               );
             })}

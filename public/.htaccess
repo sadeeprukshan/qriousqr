@@ -55,3 +55,10 @@
 
 # --- 6. Security polish ---
 Options -Indexes
+
+# --- Counter app downloads (Android) ---
+# Correct type so Android offers to install it; always revalidate so new versions are picked up.
+AddType application/vnd.android.package-archive .apk
+<FilesMatch "\.apk$">
+  Header set Cache-Control "no-cache"
+</FilesMatch>

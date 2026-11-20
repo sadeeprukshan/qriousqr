@@ -662,6 +662,11 @@ export default function QuickOrdersTab({ company, branches }) {
                               POS
                             </span>
                           )}
+                          {order.source === 'printer' && (
+                            <span style={{ fontSize: '11px', fontWeight: '800', padding: '3px 8px', borderRadius: '999px', backgroundColor: '#ECFDF5', color: '#047857' }}>
+                              🖨 Printer
+                            </span>
+                          )}
                           {order.source === 'self' && (
                             <span style={{ fontSize: '11px', fontWeight: '800', padding: '3px 8px', borderRadius: '999px', backgroundColor: '#FEF3C7', color: '#92400E' }}>
                               Check-in
