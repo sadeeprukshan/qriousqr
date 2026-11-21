@@ -255,7 +255,7 @@ export default function CounterPosTab({ branches }) {
           <div style={{ background: '#FAF8F5', borderRadius: '12px', padding: '12px 14px' }}>
             <strong>Printer mode</strong> (POS prints to the tablet over Wi-Fi)<br />
             Install the <a href={COUNTER_APK_URL} download style={{ color: '#0E7C7B', fontWeight: 700 }}>QriousQR Counter app for Android</a>,
-            pair it, then add it in your POS as a network printer. iPad app coming to the App Store.
+            pair it, then add it in your POS as a network printer. Android tablets only; on an iPad use Browser only with the POS API or customer check-in.
             <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
               Older tablet says &quot;App not installed&quot;? Use the <a href={COUNTER_APK_ARMV7_URL} download style={{ color: '#0E7C7B' }}>version for older tablets</a>.
               Android may ask to allow installing apps from your browser; allow it once.
